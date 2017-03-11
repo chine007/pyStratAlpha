@@ -33,7 +33,6 @@ _factorPathDict = {
 }
 
 
-@staticmethod
 def get_data_div(save_csv_path, numerator='NAV', denominator='CAP', freq='m'):
     """
     :param save_csv_path: str, save path and name of divide result

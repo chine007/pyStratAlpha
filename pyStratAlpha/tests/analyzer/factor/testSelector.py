@@ -45,6 +45,8 @@ class TestSelector(unittest.TestCase):
                             ignore_zero_weight=False)
 
         selector.industry_neutral = True
+
+        #TODO test case when selector is not industry neutral
         self.selector = selector
 
     def testSecSelectedUniverse(self):

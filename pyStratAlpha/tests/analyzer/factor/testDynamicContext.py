@@ -13,16 +13,17 @@ from pyStratAlpha.enums.factor import FactorNormType
 
 class TestDynamicContext(unittest.TestCase):
     def setUp(self):
-        dirName = os.path.dirname(os.path.abspath(__file__))
-        zipPath = os.path.join(dirName, 'data')
-        factorPathDict = {
-            'MV': [zipPath + '//factors.csv', 'm'],  # 总市值, 月度频率 -- 分层因子
-            'BP_LF': [zipPath + '//factors.csv', 'm'],  # 最近财报的净资产/总市值, 季度频率 -- 分层因子/alpha测试因子
-            'SP_TTM': [zipPath + '//factors.csv', 'q'],  # 过去12 个月总营业收入/总市值, 季度频率 -- alpha测试因子
-            'GP2Asset': [zipPath + '//factors.csv', 'q'],  # 销售毛利润/总资产, 季度频率 -- alpha测试因子
-            'RETURN': [zipPath + '//factors.csv', 'm']  # 收益,月度频率
+        dir_name = os.path.dirname(os.path.abspath(__file__))
+        zip_path = os.path.join(dir_name, 'data')
+        factor_path = {
+            'MV': [zip_path + '//factors.csv', 'm'],  # 总市值, 月度频率 -- 分层因子
+            'BP_LF': [zip_path + '//factors.csv', 'm'],  # 最近财报的净资产/总市值, 季度频率 -- 分层因子/alpha测试因子
+            'SP_TTM': [zip_path + '//factors.csv', 'q'],  # 过去12 个月总营业收入/总市值, 季度频率 -- alpha测试因子
+            'GP2Asset': [zip_path + '//factors.csv', 'q'],  # 销售毛利润/总资产, 季度频率 -- alpha测试因子
+            'RETURN': [zip_path + '//factors.csv', 'm']  # 收益,月度频率
         }
 
+        #TODO add more cases
         self.factor = FactorLoader(start_date='2010-01-31',
                                    end_date='2010-12-31',
                                    factor_norm_dict={'MV': FactorNormType.Null,
@@ -30,18 +31,18 @@ class TestDynamicContext(unittest.TestCase):
                                                      'GP2Asset': FactorNormType.Null,
                                                      'SP_TTM': FactorNormType.Null,
                                                      'RETURN': FactorNormType.Null},
-                                   zip_path=zipPath,
-                                   factor_path_dict=factorPathDict
+                                   zip_path=zip_path,
+                                   factor_path_dict=factor_path
                                    )
 
-        factorData = self.factor.get_factor_data()
+        factor_data = self.factor.get_factor_data()
 
-        self.result = pd.read_csv(zipPath + '//result.csv')
+        self.result = pd.read_csv(zip_path + '//result.csv')
 
-        self.analyzer = dynamicContext.DCAMAnalyzer(layer_factor=[factorData['MV']],
-                                                    alpha_factor=[factorData['BP_LF'], factorData['SP_TTM'],
-                                                                  factorData['GP2Asset']],
-                                                    sec_return=factorData['RETURN'],
+        self.analyzer = dynamicContext.DCAMAnalyzer(layer_factor=[factor_data['MV']],
+                                                    alpha_factor=[factor_data['BP_LF'], factor_data['SP_TTM'],
+                                                                  factor_data['GP2Asset']],
+                                                    sec_return=factor_data['RETURN'],
                                                     tiaocang_date=self.factor.get_tiaocang_date(),
                                                     tiaocang_date_window_size=3)
 

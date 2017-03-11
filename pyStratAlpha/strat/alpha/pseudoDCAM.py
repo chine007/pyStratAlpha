@@ -160,11 +160,11 @@ if __name__ == "__main__":
                       'INDUSTRY': [FactorNormType.Null, DCAMFactorType.industryFactor, FactorICSign.Null],
                       'IND_WGT': [FactorNormType.Null, DCAMFactorType.indexWeight, FactorICSign.Null]}
 
-    factorLoaderParams = {'startDate': '2013-12-05',
-                          'endDate': '2015-12-30',
+    factorLoaderParams = {'startDate': '2010-12-05',
+                          'endDate': '2016-12-30',
                           'factorNormDict': factorNormDict}
 
-    analyzerParams = {'factorWeightType': FactorWeightType.ICWeight,
+    analyzerParams = {'factorWeightType': FactorWeightType.EqualWeight,
                       'tiaoCangDateWindowSize': 12}
 
     selectorParams = {'saveSecSelected': True}
