@@ -14,6 +14,7 @@ from pyStratAlpha.utils.symbol import remove_suffix
 from pyStratAlpha.utils.symbol import wind_convert_to_data_yes
 from pyStratAlpha.utils.tsMarketDataHandler import TSMarketDataHandler
 from pyStratAlpha.utils.windMarketDataHandler import WindMarketDataHandler
+from pyStratAlpha.utils.file_utils import unzip_csv_folder
 
 __all__ = ['map_to_biz_day',
            'get_pos_adj_date',
@@ -28,5 +29,6 @@ __all__ = ['map_to_biz_day',
            'wind_convert_to_data_yes',
            'data_yes_convert_to_wind',
            'WindMarketDataHandler',
-           'TSMarketDataHandler'
+           'TSMarketDataHandler',
+           'unzip_csv_folder'
            ]

@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
+
 from PyFin.DateUtilities import Calendar
 from alphalens.performance import factor_returns
 from alphalens.performance import mean_return_by_quantile
 from alphalens.utils import get_clean_factor_and_forward_returns
-
 from pyStratAlpha.analyzer.indexComp import IndexComp
 from pyStratAlpha.enums import DataSource
 from pyStratAlpha.utils import WindMarketDataHandler

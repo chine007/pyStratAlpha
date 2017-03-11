@@ -4,12 +4,11 @@
 import pandas as pd
 from PyFin.Utilities import pyFinAssert
 from pyStratAlpha.analyzer.factor.cleanData import adjust_factor_date
-from pyStratAlpha.analyzer.factor.cleanData import get_multi_index_data
 from pyStratAlpha.analyzer.factor.cleanData import get_universe_single_factor
-from pyStratAlpha.analyzer.factor.norm import normalize
+from pyStratAlpha.analyzer.factor.cleanData import normalize_single_factor_data
 from pyStratAlpha.enums.factor import FactorNormType
-from pyStratAlpha.utils.date_utils import get_pos_adj_date
-from pyStratAlpha.utils.file_utils import unzip_csv_folder
+from pyStratAlpha.utils import get_pos_adj_date
+from pyStratAlpha.utils import unzip_csv_folder
 
 _factorPathDict = {
     # 总市值, 月度频率 -- 分层因子
@@ -131,29 +130,6 @@ class FactorLoader(object):
             returns[name] = factors
         return returns
 
-    @staticmethod
-    def normalize_single_factor_data(factors, industries=None, caps=None):
-        """
-        :param factors: pd.Series, multi index = [tiaoCangDate, secID], value = factors
-        :param industries:
-        :param caps:
-        :return: 去极值、中性化、标准化的因子
-        """
-        returns = pd.Series(name=factors.name)
-        tiaocang_date = sorted(set(factors.index.get_level_values('tiaoCangDate')))
-        for date in tiaocang_date:
-            factor_to_use = get_multi_index_data(factors, 'tiaoCangDate', date)
-            industry_to_use = get_multi_index_data(industries, 'tiaoCangDate',
-                                                   date) if industries is not None else None
-            cap_to_use = get_multi_index_data(caps, 'tiaoCangDate', date) if caps is not None else None
-            data_normed = normalize(factor_to_use, industry_to_use, cap_to_use)
-            returns = returns.append(data_normed)
-
-        # save in multi index format
-        index = pd.MultiIndex.from_tuples(returns.index, names=['tiaoCangDate', 'secID'])
-        returns = pd.Series(data=returns.values, index=index, name=factors.name)
-        return returns
-
     def get_norm_factor_data(self):
         factor_data = self.get_factor_data()
         for name in self._factorNames:
@@ -161,15 +137,15 @@ class FactorLoader(object):
                 pyFinAssert(('INDUSTRY' in self._factorNames and 'MV' in self._factorNames),
                             ValueError,
                             'Failed to neutralize because of missing industry and cap data')
-                factor_data[name] = self.normalize_single_factor_data(factor_data[name],
-                                                                      industries=factor_data['INDUSTRY'],
-                                                                      caps=factor_data['MV'])
+                factor_data[name] = normalize_single_factor_data(factor_data[name],
+                                                                 industries=factor_data['INDUSTRY'],
+                                                                 caps=factor_data['MV'])
             elif self._factorNormDict[name][0] == FactorNormType.IndustryNeutral:
                 pyFinAssert(('INDUSTRY' in self._factorNames),
                             ValueError,
                             'Failed to neutralize because of missing industry')
-                factor_data[name] = self.normalize_single_factor_data(factor_data[name],
-                                                                      industries=factor_data['INDUSTRY'])
+                factor_data[name] = normalize_single_factor_data(factor_data[name],
+                                                                 industries=factor_data['INDUSTRY'])
 
         return factor_data
 

@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 import datetime
-
 import pandas as pd
 from PyFin.DateUtilities import Calendar
 from PyFin.DateUtilities import Date
 from PyFin.Enums import BizDayConventions
-
 from pyStratAlpha.utils import date_utils
+from pyStratAlpha.analyzer.factor.norm import normalize
 
 
 def get_report_date(act_date, return_biz_day=True):
@@ -125,6 +124,29 @@ def get_multi_index_data(multi_idx_data, first_idx_name, first_idx_val, sec_idx_
             sec_idx_val = [sec_idx_val]
         data = data.loc[data.index.get_level_values(sec_idx_name).isin(sec_idx_val)]
     return data
+
+
+def normalize_single_factor_data(factors, industries=None, caps=None):
+    """
+    :param factors: pd.Series, multi index = [tiaoCangDate, secID], value = factors
+    :param industries:
+    :param caps:
+    :return: 去极值、中性化、标准化的因子
+    """
+    returns = pd.Series(name=factors.name)
+    tiaocang_date = sorted(set(factors.index.get_level_values('tiaoCangDate')))
+    for date in tiaocang_date:
+        factor_to_use = get_multi_index_data(factors, 'tiaoCangDate', date)
+        industry_to_use = get_multi_index_data(industries, 'tiaoCangDate',
+                                               date) if industries is not None else None
+        cap_to_use = get_multi_index_data(caps, 'tiaoCangDate', date) if caps is not None else None
+        data_normed = normalize(factor_to_use, industry_to_use, cap_to_use)
+        returns = returns.append(data_normed)
+
+    # save in multi index format
+    index = pd.MultiIndex.from_tuples(returns.index, names=['tiaoCangDate', 'secID'])
+    returns = pd.Series(data=returns.values, index=index, name=factors.name)
+    return returns
 
 
 if __name__ == "__main__":

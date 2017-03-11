@@ -3,7 +3,6 @@
 # ref https://uqer.io/community/share/57ff3f9e228e5b3658fac3ed
 
 from math import e
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -11,7 +10,6 @@ import scipy.stats as st
 from PyFin.DateUtilities import Date
 from PyFin.Utilities import pyFinAssert
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter
-
 from pyStratAlpha.analyzer.factor.cleanData import get_multi_index_data
 from pyStratAlpha.enums import FactorWeightType
 
