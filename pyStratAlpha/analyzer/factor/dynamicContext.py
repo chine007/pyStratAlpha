@@ -232,7 +232,7 @@ class DCAMAnalyzer(object):
             date = Date.strptime(date).toDateTime()
         for layerFactor in self._layerFactor:
             # 分层因子下股票分为两组
-            group_low, group_high = self.get_sec_group(layerFactor, date)
+            group_low, group_high = DCAMHelper.seperate_sec_group(layerFactor, date)
             # TODO check why length of factorLow <> group_low
             factor_low = self.get_alpha_factor(group_low, date)
             factor_high = self.get_alpha_factor(group_high, date)
