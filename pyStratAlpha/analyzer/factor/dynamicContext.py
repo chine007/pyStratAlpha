@@ -14,6 +14,28 @@ from pyStratAlpha.analyzer.factor.cleanData import get_multi_index_data
 from pyStratAlpha.enums import FactorWeightType
 
 
+class DCAMHelper(object):
+    def __init__(self):
+        pass
+
+    @classmethod
+    def seperate_sec_group(cls, factor, date):
+        """
+        :param date: datetime, 调仓日
+        :param factor: multi index pd.Series, 情景分层因子
+        :return: list
+        给定某一时间，按因子把股票分为数量相同的两组（大/小）
+        """
+        data = get_multi_index_data(factor, 'tiaoCangDate', date)
+        # 按分层因子值从小到大排序
+        data.sort_values(ascending=True, inplace=True)
+        sec_ids = data.index.get_level_values('secID').tolist()
+        # 分组,因子值小的哪一组股票为low,高的为high
+        group_low = sec_ids[:np.round(len(data)) / 2]
+        group_high = sec_ids[np.round(len(data)) / 2:]
+        return group_low, group_high
+
+
 class DCAMAnalyzer(object):
     def __init__(self,
                  layer_factor,
@@ -42,24 +64,7 @@ class DCAMAnalyzer(object):
         if self._factorWeightType == FactorWeightType.EqualWeight:
             pyFinAssert(len(self._alphaFactorSign) == len(self._alphaFactor), ValueError,
                         "length of alpha_factor_sign({0}), does not equal to that of alpha factor({1})".format(
-                            len(self._alphaFactorSign), len(self._alphaFactor)))
-
-    @staticmethod
-    def get_sec_group(layer_factor, date):
-        """
-        :param date: datetime, 调仓日
-        :param layer_factor: multi index pd.Series, 情景分层因子
-        :return: list
-        给定某一时间，按分层因子layerFactor把股票分为数量相同的两组（大/小）
-        """
-        data = get_multi_index_data(layer_factor, 'tiaoCangDate', date)
-        # 按分层因子值从小到大排序
-        data.sort_values(ascending=True, inplace=True)
-        sec_ids = data.index.get_level_values('secID').tolist()
-        # 分组,因子值小的哪一组股票为low,高的为high
-        group_low = sec_ids[:np.round(len(data)) / 2]
-        group_high = sec_ids[np.round(len(data)) / 2:]
-        return group_low, group_high
+                                len(self._alphaFactorSign), len(self._alphaFactor)))
 
     def get_sec_return(self, sec_ids, date):
         """
@@ -101,7 +106,7 @@ class DCAMAnalyzer(object):
         for j in range(0, len(self._tiaoCangDate) - 1):  # 对时间做循环，得到每个时间点的rankIC
             date = self._tiaoCangDate[j]
             next_date = self._tiaoCangDate[j + 1]
-            group_low, group_high = self.get_sec_group(layer_factor, date)  # 分组
+            group_low, group_high = DCAMHelper.seperate_sec_group(layer_factor, date)  # 分组
             return_low = self.get_sec_return(group_low, next_date)
             return_high = self.get_sec_return(group_high, next_date)  # 得到下期收益序列
             factor_low = self.get_alpha_factor(group_low, date)
@@ -155,13 +160,17 @@ class DCAMAnalyzer(object):
             ret.to_csv('analysis.csv')
         return ret
 
-    @staticmethod
-    def calc_layer_factor_distance(percentile):
+    def calc_layer_factor_distance(self, percentile):
         """
         :param percentile: float, 个股在分层因子下的分位数, [0,1]
         :return: float, 个股的分层因子上的属性量化分数
         """
-        return sigmoid_modif(percentile)
+        if self._factorWeightType == FactorWeightType.EqualWeight:
+            return 1
+        elif self._factorWeightType == FactorWeightType.ICWeight:
+            return sigmoid_modif(percentile)
+        else:
+            raise NotImplementedError
 
     def calc_layer_factor_quantile_on_date(self, date):
         """
@@ -193,7 +202,7 @@ class DCAMAnalyzer(object):
 
         tiao_cang_date_range = self._tiaoCangDate[
                                self._tiaoCangDate.index(date) - self._tiaoCangDateWindowSize: self._tiaoCangDate.index(
-                                   date)]
+                                       date)]
 
         for layerFactor in self._layerFactor:
             if self._factorWeightType == FactorWeightType.EqualWeight:
@@ -275,12 +284,12 @@ class DCAMAnalyzer(object):
                 low_high = factor_rank_on_layer_factor.index.get_level_values('low_high')
                 # 权重取绝对值
                 weight = abs(alpha_weight_low.loc[layerFactor].values) if low_high == 'low' else abs(
-                    alpha_weight_high.loc[layerFactor].values)
+                        alpha_weight_high.loc[layerFactor].values)
                 # normalize
                 # weight = [i / weight.sum() for i in weight]
                 layer_factor_quantile_to_use = layer_factor_quantile[layerFactor][secID]
                 weighted_rank += np.dot(weight, rank) * abs(
-                    self.calc_layer_factor_distance(layer_factor_quantile_to_use))
+                        self.calc_layer_factor_distance(layer_factor_quantile_to_use))
             ret[secID] = weighted_rank
 
         return ret
