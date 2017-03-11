@@ -1,35 +1,47 @@
 # -*- coding: utf-8 -*-
-import os
-import zipfile
+
 
 import pandas as pd
 from PyFin.Utilities import pyFinAssert
-
 from pyStratAlpha.analyzer.factor.cleanData import adjust_factor_date
 from pyStratAlpha.analyzer.factor.cleanData import get_multi_index_data
 from pyStratAlpha.analyzer.factor.cleanData import get_universe_single_factor
 from pyStratAlpha.analyzer.factor.norm import normalize
 from pyStratAlpha.enums.factor import FactorNormType
-from pyStratAlpha.utils.dateutils import get_pos_adj_date
+from pyStratAlpha.utils.date_utils import get_pos_adj_date
+from pyStratAlpha.utils.file_utils import unzip_csv_folder
 
 _factorPathDict = {
-    'MV': ['..//..//data//factor//FactorDataMonthly.csv', 'm'],  # 总市值, 月度频率 -- 分层因子
-    'BP_LF': ['..//..//data//factor//FactorDataMonthly.csv', 'm'],  # 最近财报的净资产/总市值, 季度频率 -- 分层因子/alpha测试因子
-    'EquityGrowth_YOY': ['..//..//data//factor//FactorDataQuarterly.csv', 'q'],  # 净资产同比增长率, 季度频率 -- 分层因子
-    'ROE': ['..//..//data//factor//FactorDataQuarterly.csv', 'q'],  # 净资产收益率, 季度频率 -- 分层因子
-    'STDQ': ['..//..//data//factor//FactorDataMonthly.csv', 'm'],  # 季度日均换手率, 月度频率 -- 分层因子
-
-    'EP2_TTM': ['..//..//data//factor//FactorDataMonthly.csv', 'm'],  # 剔除非经常性损益的过去12 个月净利润/总市值, 季度频率 -- alpha测试因子
-    'SP_TTM': ['..//..//data//factor//FactorDataMonthly.csv', 'm'],  # 过去12 个月总营业收入/总市值, 季度频率 -- alpha测试因子
-    'GP2Asset': ['..//..//data//factor//FactorDataQuarterly.csv', 'q'],  # 销售毛利润/总资产, 季度频率 -- alpha测试因子
-    'PEG': ['..//..//data//factor//FactorDataMonthly.csv', 'm'],  # TTM PE/预测未来2 年净利润复合增长率, 月度频率 -- alpha测试因子 朝阳永续数据
-    'ProfitGrowth_Qr_YOY': ['..//..//data//factor//FactorDataQuarterly.csv', 'q'],  # 净利润增长率（季度同比）, 季度频率 - alpha测试因子
-    'TO_adj': ['..//..//data//factor//FactorDataMonthly.csv', 'm'],  # 月度换手率, 月度频率 - alpha测试因子
-    'PPReversal': ['..//..//data//factor//FactorDataMonthly.csv', 'm'],  # 5 日均价/60 日成交均价, 月度频率 - alpha测试因子
-
-    'RETURN': ['..//..//data//return//monthlyReturn.csv', 'm'],  # 收益,月度频率
-    'INDUSTRY': ['..//..//data//industry//codeSW.csv', 'm'],  # 申万行业分类,月度频率
-    'IND_WGT': ['..//..//data//industry//IndustryWeight.csv', 'm']  # 中证500股票池内按照申万一级行业分类统计的行业权重,月度频率
+    # 总市值, 月度频率 -- 分层因子
+    'MV': {'path': '..//..//data//factor//FactorDataMonthly.csv', 'freq': 'm'},
+    # 最近财报的净资产/总市值, 季度频率 -- 分层因子/alpha测试因子
+    'BP_LF': {'path': '..//..//data//factor//FactorDataMonthly.csv', 'freq': 'm'},
+    # 净资产同比增长率, 季度频率 -- 分层因子
+    'EquityGrowth_YOY': {'path': '..//..//data//factor//FactorDataQuarterly.csv', 'freq': 'q'},
+    # 净资产收益率, 季度频率 -- 分层因子
+    'ROE': {'path': '..//..//data//factor//FactorDataQuarterly.csv', 'freq': 'q'},
+    # 季度日均换手率, 月度频率 -- 分层因子
+    'STDQ': {'path': '..//..//data//factor//FactorDataMonthly.csv', 'freq': 'm'},
+    # 剔除非经常性损益的过去12 个月净利润/总市值, 季度频率 -- alpha测试因子
+    'EP2_TTM': {'path': '..//..//data//factor//FactorDataMonthly.csv', 'freq': 'm'},
+    # 过去12 个月总营业收入/总市值, 季度频率 -- alpha测试因子
+    'SP_TTM': {'path': '..//..//data//factor//FactorDataMonthly.csv', 'freq': 'm'},
+    # 销售毛利润/总资产, 季度频率 -- alpha测试因子
+    'GP2Asset': {'path': '..//..//data//factor//FactorDataQuarterly.csv', 'freq': 'q'},
+    # TTM PE/预测未来2 年净利润复合增长率, 月度频率 -- alpha测试因子 朝阳永续数据
+    'PEG': {'path': '..//..//data//factor//FactorDataMonthly.csv', 'freq': 'm'},
+    # 净利润增长率（季度同比）, 季度频率 - alpha测试因子
+    'ProfitGrowth_Qr_YOY': {'path': '..//..//data//factor//FactorDataQuarterly.csv', 'freq': 'q'},
+    # 月度换手率, 月度频率 - alpha测试因子
+    'TO_adj': {'path': '..//..//data//factor//FactorDataMonthly.csv', 'freq': 'm'},
+    # 5 日均价/60 日成交均价, 月度频率 - alpha测试因子
+    'PPReversal': {'path': '..//..//data//factor//FactorDataMonthly.csv', 'freq': 'm'},
+    # 收益,月度频率
+    'RETURN': {'path': '..//..//data//return//monthlyReturn.csv', 'freq': 'm'},
+    # 申万行业分类,月度频率
+    'INDUSTRY': {'path': '..//..//data//industry//codeSW.csv', 'freq': 'm'},
+    # 中证500股票池内按照申万一级行业分类统计的行业权重,月度频率
+    'IND_WGT': {'path': '..//..//data//industry//IndustryWeight.csv', 'freq': 'm'}
 }
 
 
@@ -93,37 +105,10 @@ class FactorLoader(object):
         self._nbFactor = len(factor_norm_dict)
         self._freq = freq
         self._tiaocangDate = []
-        # 由于因子csv文件较大,所以默认存储为压缩格式的文件, 第一次使用时自动解压缩
-        self._unzip_csv_files(zip_path)
         self._factorPathDict = factor_path_dict
         self._dateFormat = date_format
-
-    @staticmethod
-    def _unzip_csv_files(zip_path):
-        """
-        :param zip_path: str, 因子数据压缩包路径
-        :return:
-        解压缩因子数据压缩包，压缩包中尚未解压到目标文件夹中的文件将被解压
-        """
-        zip_file = zipfile.ZipFile(os.path.join(zip_path, "data.zip"), "r")
-        for name in zip_file.namelist():
-            name = name.replace('\\', '/')
-            # 检查文件夹是否存在,新建尚未存在的文件夹
-            if name.endswith("/"):
-                ext_dir = os.path.join(zip_path, name)
-                if not os.path.exists(ext_dir):
-                    os.mkdir(ext_dir)
-            # 检查数据文件是否存在，新建尚未存在的数据文件
-            else:
-                ext_filename = os.path.join(zip_path, name)
-                ext_dir = os.path.dirname(ext_filename)
-                if not os.path.exists(ext_dir):
-                    os.mkdir(ext_dir)
-                if not os.path.exists(ext_filename):
-                    outfile = open(ext_filename, 'wb')
-                    outfile.write(zip_file.read(name))
-                    outfile.close()
-        return
+        # 由于因子csv文件较大,所以默认存储为压缩格式的文件, 第一次使用时自动解压缩
+        unzip_csv_folder(zip_path)
 
     def get_tiaocang_date(self):
         return get_pos_adj_date(self._startDate, self._endDate, freq=self._freq)
@@ -131,8 +116,8 @@ class FactorLoader(object):
     def get_factor_data(self):
         returns = pd.Series()
         for name in self._factorNames:
-            path_to_use = self._factorPathDict[name][0]
-            original_freq = self._factorPathDict[name][1]
+            path_to_use = self._factorPathDict[name]['path']
+            original_freq = self._factorPathDict[name]['freq']
             if original_freq != self._freq:
                 factor_raw = get_universe_single_factor(path_to_use, factor_name=name, date_format=self._dateFormat)
                 factors = adjust_factor_date(factor_raw, self._startDate, self._endDate, self._freq)

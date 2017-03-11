@@ -2,7 +2,7 @@
 import datetime
 import unittest
 
-from pyStratAlpha.utils.dateutils import get_pos_adj_date
+from pyStratAlpha.utils.date_utils import get_pos_adj_date
 
 
 class TestDateUtils(unittest.TestCase):

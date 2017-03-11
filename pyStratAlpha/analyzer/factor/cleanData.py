@@ -6,7 +6,7 @@ from PyFin.DateUtilities import Calendar
 from PyFin.DateUtilities import Date
 from PyFin.Enums import BizDayConventions
 
-from pyStratAlpha.utils import dateutils
+from pyStratAlpha.utils import date_utils
 
 
 def get_report_date(act_date, return_biz_day=True):
@@ -70,7 +70,7 @@ def get_universe_single_factor(file_path, index_name=['tradeDate', 'secID'], ret
     factor = factor.dropna()
     factor = factor[factor['secID'].str.contains(r'^[^<A>]+$$')]  # 去除类似AXXXX的代码(IPO终止)
     if return_biz_day:
-        biz_day = dateutils.map_to_biz_day(factor['tradeDate'])
+        biz_day = date_utils.map_to_biz_day(factor['tradeDate'])
     index = pd.MultiIndex.from_arrays([biz_day.values, factor['secID'].values], names=index_name)
     ret = pd.Series(factor['factor'].values, index=index, name='factor')
     return ret
@@ -89,7 +89,7 @@ def adjust_factor_date(factor_raw, start_date, end_date, freq='m'):
     ret = pd.Series()
 
     # 获取调仓日日期
-    tiaocang_date = dateutils.get_pos_adj_date(start_date, end_date, freq=freq)
+    tiaocang_date = date_utils.get_pos_adj_date(start_date, end_date, freq=freq)
     report_date = [get_report_date(date, return_biz_day=True) for date in tiaocang_date]
 
     for i in range(len(tiaocang_date)):

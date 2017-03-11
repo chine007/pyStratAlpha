@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from pyStratAlpha.utils.dateutils import get_pos_adj_date
-from pyStratAlpha.utils.dateutils import map_to_biz_day
+from pyStratAlpha.utils.date_utils import get_pos_adj_date
+from pyStratAlpha.utils.date_utils import map_to_biz_day
 from pyStratAlpha.utils.misc import convert_to_non_cumul_return
 from pyStratAlpha.utils.misc import fig_style
 from pyStratAlpha.utils.misc import pickle_dump_data
