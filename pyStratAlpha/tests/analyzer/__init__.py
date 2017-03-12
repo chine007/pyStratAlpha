@@ -1,15 +1,11 @@
 # -*- coding: utf-8 -*-
 
-from pyStratAlpha.tests.analyzer.factor import TestCleanData
-from pyStratAlpha.tests.analyzer.factor import TestDynamicContext
-from pyStratAlpha.tests.analyzer.factor import TestFactorLoader
-from pyStratAlpha.tests.analyzer.factor import TestNorm
-from pyStratAlpha.tests.analyzer.factor import TestSelector
-from pyStratAlpha.tests.analyzer.indexComp import TestIndexComp
-from pyStratAlpha.tests.analyzer.performance import TestNavAnalyzer
+from pyStratAlpha.tests.analyzer import factor
+from pyStratAlpha.tests.analyzer import indexComp
+from pyStratAlpha.tests.analyzer import performance
+from pyStratAlpha.tests.analyzer import portfolio
 
-__all__ = ['TestIndexComp', 'TestCleanData',
-           'TestNorm', 'TestNavAnalyzer'
-                       'TestDynamicContext',
-           'TestFactorLoader',
-           'TestSelector']
+__all__ = ['factor',
+           'indexComp',
+           'performance',
+           'portfolio']

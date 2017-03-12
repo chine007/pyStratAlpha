@@ -37,6 +37,39 @@ class DCAMHelper(object):
         group_high = sec_ids[np.round(len(data)) / 2:]
         return group_low, group_high
 
+    @classmethod
+    def get_sec_return_on_date(cls, sec_return, sec_ids, date):
+        """
+        :param sec_return: pd.Series, multindex = [tiaoCangdate, seciD]
+        :param sec_ids: list of sec ids
+        :param date: datetime, 调仓日
+        :return: pd.Series, index = sec ID
+        给定某一时间和股票代码列表, 返回前一个调仓日至当前调仓日的股票收益
+        """
+        data = get_multi_index_data(sec_return, 'tiaoCangDate', date, 'secID', sec_ids)
+        data = data.reset_index().drop('tiaoCangDate', axis=1)
+        data = data.set_index('secID')
+        return data
+
+    @classmethod
+    def get_factor_on_date(cls, factor, factor_names, sec_ids, date):
+        """
+        :param factor: list, element = pd.Series, multiindex = [tiaoCangdate, seci]
+        :param factor_names: list of str, names of factors in factor list
+        :param sec_ids: list of sec ids
+        :param date: datetime, 调仓日
+        :return: pd.DataFrame, index = sec_ids, col = [factor]
+        给定某一时间, 和股票代码列表, 返回因子列表
+        """
+        ret = pd.DataFrame()
+        for i in range(len(factor)):
+            data = get_multi_index_data(factor[i], 'tiaoCangDate', date, 'secID', sec_ids)
+            data = data.reset_index().drop('tiaoCangDate', axis=1)
+            data = data.set_index('secID')
+            ret = pd.concat([ret, data], axis=1)
+        ret.columns = factor_names
+        return ret
+
 
 class DCAMAnalyzer(object):
     def __init__(self,
@@ -111,8 +144,8 @@ class DCAMAnalyzer(object):
             date = self._tiaoCangDate[j]
             next_date = self._tiaoCangDate[j + 1]
             group_low, group_high = DCAMHelper.seperate_sec_group(layer_factor, date)  # 分组
-            return_low = self.get_sec_return(group_low, next_date)
-            return_high = self.get_sec_return(group_high, next_date)  # 得到下期收益序列
+            return_low = DCAMHelper.get_sec_return_on_date(self._secReturn, group_low, next_date)
+            return_high = DCAMHelper.get_sec_return_on_date(self._secReturn, group_high, next_date)  # 得到下期收益序列
             factor_low = self.get_alpha_factor(group_low, date)
             factor_high = self.get_alpha_factor(group_high, date)  # 得到当期因子序列
             table_low = pd.concat([return_low, factor_low], axis=1)

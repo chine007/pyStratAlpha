@@ -23,28 +23,28 @@ class TestDynamicContext(unittest.TestCase):
         }
 
         # TODO add more cases
-        self.factor = FactorLoader(start_date='2010-01-31',
-                                   end_date='2010-12-31',
-                                   factor_norm_dict={'MV': FactorNormType.Null,
-                                                     'BP_LF': FactorNormType.Null,
-                                                     'GP2Asset': FactorNormType.Null,
-                                                     'SP_TTM': FactorNormType.Null,
-                                                     'RETURN': FactorNormType.Null},
-                                   zip_path=zip_path,
-                                   factor_path_dict=factor_path
-                                   )
+        factor_loader = FactorLoader(start_date='2010-01-31',
+                                     end_date='2010-12-31',
+                                     factor_norm_dict={'MV': FactorNormType.Null,
+                                                       'BP_LF': FactorNormType.Null,
+                                                       'GP2Asset': FactorNormType.Null,
+                                                       'SP_TTM': FactorNormType.Null,
+                                                       'RETURN': FactorNormType.Null},
+                                     zip_path=zip_path,
+                                     factor_path_dict=factor_path
+                                     )
 
-        factor_data = self.factor.get_factor_data()
+        factor_data = factor_loader.get_factor_data()
+        layer_factor = [factor_data['MV']]
+        alpha_factor = [factor_data['BP_LF'], factor_data['SP_TTM'], factor_data['GP2Asset']]
 
         self.result = pd.read_csv(zip_path + '//result.csv')
 
         self.helper = DCAMHelper()
-
-        self.analyzer = DCAMAnalyzer(layer_factor=[factor_data['MV']],
-                                     alpha_factor=[factor_data['BP_LF'], factor_data['SP_TTM'],
-                                                   factor_data['GP2Asset']],
+        self.analyzer = DCAMAnalyzer(layer_factor=layer_factor,
+                                     alpha_factor=alpha_factor,
                                      sec_return=factor_data['RETURN'],
-                                     tiaocang_date=self.factor.get_tiaocang_date(),
+                                     tiaocang_date=factor_loader.get_tiaocang_date(),
                                      tiaocang_date_window_size=3)
 
         tickers = ['000001.SZ', '000002.SZ', '000003.SZ', '000004.SZ', '000005.SZ', '000006.SZ', '000007.SZ',
@@ -58,10 +58,11 @@ class TestDynamicContext(unittest.TestCase):
         factor = [24, 1.0, 1.1, 0.8, 0.5, 1.2, -1.0, -2, 1.0, 0.5]
         factor = pd.Series(factor, index=index)
 
-        self.data = {'factor': factor}
+        self.data = {'simple_factor': factor,
+                     'alpha_factor': alpha_factor}
 
     def testGetSecGroup(self):
-        factor = self.data['factor']
+        factor = self.data['simple_factor']
 
         calculated = self.helper.seperate_sec_group(factor, datetime.datetime(2015, 4, 30))
         expected = (['000004.SZ', '000002.SZ'], ['000003.SZ', '000001.SZ'])
@@ -76,14 +77,18 @@ class TestDynamicContext(unittest.TestCase):
         self.assertEqual(calculated, expected)
 
     def testGetAlphaFactor(self):
-        calculated = self.analyzer.get_alpha_factor(['000007.SZ', '000017.SZ', '000027.SZ', '000737.SZ', '000767.SZ'],
-                                                    datetime.datetime(2010, 7, 30))
+        factor = self.data['alpha_factor']
+        calculated = self.helper.get_factor_on_date(factor=factor,
+                                                    factor_names=['BP_LF', 'SP_TTM', 'GP2Asset'],
+                                                    sec_ids=['000007.SZ', '000017.SZ', '000027.SZ', '000737.SZ',
+                                                             '000767.SZ'],
+                                                    date=datetime.datetime(2010, 7, 30))
         expected = pd.DataFrame(
-            data={'BP_LF': [-1.520271174, -2.558324574, 0.652255509, -0.1164599, -0.16154393],
-                  'SP_TTM': [np.nan, np.nan, np.nan, np.nan, np.nan],
-                  'GP2Asset': [np.nan, np.nan, np.nan, np.nan, np.nan]},
-            index=pd.Index(['000007.SZ', '000017.SZ', '000027.SZ', '000737.SZ', '000767.SZ'], dtype='object'),
-            columns=['BP_LF', 'SP_TTM', 'GP2Asset'])
+                data={'BP_LF': [-1.520271174, -2.558324574, 0.652255509, -0.1164599, -0.16154393],
+                      'SP_TTM': [np.nan, np.nan, np.nan, np.nan, np.nan],
+                      'GP2Asset': [np.nan, np.nan, np.nan, np.nan, np.nan]},
+                index=pd.Index(['000007.SZ', '000017.SZ', '000027.SZ', '000737.SZ', '000767.SZ'], dtype='object'),
+                columns=['BP_LF', 'SP_TTM', 'GP2Asset'])
         pd.util.testing.assert_frame_equal(calculated, expected)
 
     def testCalcRankIC(self):
@@ -149,9 +154,9 @@ class TestDynamicContext(unittest.TestCase):
         calculated = self.analyzer.get_sec_return(['000007.SZ', '000017.SZ', '000027.SZ', '000737.SZ', '000767.SZ'],
                                                   datetime.datetime(2010, 7, 30))
         expected = pd.DataFrame(
-            data=[-0.189065723, -1.088532817, 0.083715309, 0.139473629, -0.53666822],
-            index=pd.Index([u'000007.SZ', u'000017.SZ', u'000027.SZ', u'000737.SZ', u'000767.SZ'],
-                           dtype='object', name='secID'), columns=['RETURN'])
+                data=[-0.189065723, -1.088532817, 0.083715309, 0.139473629, -0.53666822],
+                index=pd.Index([u'000007.SZ', u'000017.SZ', u'000027.SZ', u'000737.SZ', u'000767.SZ'],
+                               dtype='object', name='secID'), columns=['RETURN'])
         pd.util.testing.assert_frame_equal(calculated, expected)
 
 
