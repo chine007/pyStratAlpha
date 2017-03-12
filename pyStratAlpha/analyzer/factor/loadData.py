@@ -89,7 +89,7 @@ class FactorLoader(object):
                  zip_path="..//..//data",
                  factor_path_dict=_factorPathDict,
                  date_format='%Y%m%d',
-                 na_handler=FactorNAHandler.Drop):
+                 na_handler=FactorNAHandler.Ignore):
         """
         :param start_date: str/datetime.datetime, 提取因子数据的开始日期
         :param end_date: str/datetime.datetime, 提取因子数据的结束日期
@@ -122,13 +122,13 @@ class FactorLoader(object):
             original_freq = self._factorPathDict[name]['freq']
             if original_freq != self._freq:
                 factor_raw = get_universe_single_factor(path_to_use, factor_name=name, date_format=self._dateFormat,
-                                                        na_hanlder=self._na_handler)
+                                                        na_handler=self._na_handler)
                 factors = adjust_factor_date(factor_raw, self._startDate, self._endDate, self._freq)
             else:
                 factor_raw = get_universe_single_factor(path_to_use, index_name=['tiaoCangDate', 'secID'],
                                                         factor_name=name,
                                                         date_format=self._dateFormat,
-                                                        na_hanlder=self._na_handler)
+                                                        na_handler=self._na_handler)
                 factor_raw = factor_raw.loc[factor_raw.index.get_level_values('tiaoCangDate') >= self._startDate]
                 factors = factor_raw.loc[factor_raw.index.get_level_values('tiaoCangDate') <= self._endDate]
             factors.name = name

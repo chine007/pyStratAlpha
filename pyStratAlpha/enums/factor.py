@@ -35,6 +35,7 @@ class FactorWeightType(IntEnum):
 
 @unique
 class FactorNAHandler(IntEnum):
-    Drop = 0
-    ReplaceWithMean = 1
-    ReplaceWithMedian = 2
+    Ignore = 0
+    Drop = 1
+    ReplaceWithMean = 2
+    ReplaceWithMedian = 3

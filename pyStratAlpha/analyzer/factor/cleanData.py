@@ -49,27 +49,35 @@ def get_report_date(act_date, return_biz_day=True):
 
 def factor_na_handler(factor, handler):
     """
-    :param factor: pd.Series, factor data, possibly containing na values
+    :param factor: pd.Series/pd.DataFrame, factor data, possibly containing na values
     :param handler: enum, method to handle the na values
     :return: pd.Series, cleaned factor series
     """
+    if handler == FactorNAHandler.Ignore:
+        return factor
     if handler == FactorNAHandler.Drop:
         return factor.dropna()
     elif handler == FactorNAHandler.ReplaceWithMean:
         return factor.fillna(factor.mean())
     elif handler == FactorNAHandler.ReplaceWithMedian:
         return factor.fillna(factor.median())
+    else:
+        raise NotImplementedError
 
 
-def get_universe_single_factor(file_path, index_name=['tradeDate', 'secID'], return_biz_day=True, factor_name=None,
+def get_universe_single_factor(file_path,
+                               index_name=['tradeDate', 'secID'],
+                               return_biz_day=True,
+                               factor_name=None,
                                date_format='%Y%m%d',
-                               na_hanlder=FactorNAHandler.Drop):
+                               na_handler=FactorNAHandler.Drop):
     """
     :param file_path: str, file_path of csv file, col =[datetime, secid, factor]
     :param index_name: multi index name to be set
     :param return_biz_day: bool, 是否返回交易日
     :param factor_name: str, 因子名称
     :param date_format: str， 日期格式
+    :param na_handler: enum, 对na值处理的枚举变量
     :return: pd.Series, multiindex =[datetime, secid] value = factor
     """
 
@@ -81,7 +89,7 @@ def get_universe_single_factor(file_path, index_name=['tradeDate', 'secID'], ret
         factor = factor[factor.columns[:2]]
     factor.columns = ['tradeDate', 'secID', 'factor']
     factor['tradeDate'] = pd.to_datetime(factor['tradeDate'], format=date_format)
-    factor = factor_na_handler(factor, na_hanlder)
+    factor = factor_na_handler(factor, na_handler)  # dont drop na here
     factor = factor[factor['secID'].str.contains(r'^[^<A>]+$$')]  # 去除类似AXXXX的代码(IPO终止)
     if return_biz_day:
         biz_day = date_utils.map_to_biz_day(factor['tradeDate'])

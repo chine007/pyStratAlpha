@@ -11,7 +11,9 @@ from PyFin.DateUtilities import Date
 from PyFin.Utilities import pyFinAssert
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter
 from pyStratAlpha.analyzer.factor.cleanData import get_multi_index_data
+from pyStratAlpha.analyzer.factor.cleanData import factor_na_handler
 from pyStratAlpha.enums import FactorWeightType
+from pyStratAlpha.enums import FactorNAHandler
 
 
 class DCAMHelper(object):
@@ -45,7 +47,8 @@ class DCAMAnalyzer(object):
                  tiaocang_date_window_size=12,
                  save_sec_score=True,
                  factor_weight_type=FactorWeightType.ICWeight,
-                 alpha_factor_sign=None):
+                 alpha_factor_sign=None,
+                 na_handler=FactorNAHandler.ReplaceWithMedian):
         self._layerFactor = layer_factor
         self._layerFactorNames = [layer_factor.name for layer_factor in self._layerFactor]
         self._alphaFactor = alpha_factor
@@ -61,6 +64,7 @@ class DCAMAnalyzer(object):
         self._saveSecScore = save_sec_score
         self._factorWeightType = factor_weight_type
         self._alphaFactorSign = alpha_factor_sign
+        self._na_handler = na_handler
         if self._factorWeightType == FactorWeightType.EqualWeight:
             pyFinAssert(len(self._alphaFactorSign) == len(self._alphaFactor), ValueError,
                         "length of alpha_factor_sign({0}), does not equal to that of alpha factor({1})".format(
@@ -113,6 +117,8 @@ class DCAMAnalyzer(object):
             factor_high = self.get_alpha_factor(group_high, date)  # 得到当期因子序列
             table_low = pd.concat([return_low, factor_low], axis=1)
             table_high = pd.concat([return_high, factor_high], axis=1)
+            table_low = factor_na_handler(table_low, self._na_handler)
+            table_high = factor_na_handler(table_high, self._na_handler)
             for k in self._alphaFactorNames:
                 tmplow, _ = st.spearmanr(table_low['RETURN'], table_low[k])
                 tmphigh, _ = st.spearmanr(table_high['RETURN'], table_high[k])
