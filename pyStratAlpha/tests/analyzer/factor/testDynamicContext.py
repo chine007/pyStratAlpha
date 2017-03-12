@@ -2,13 +2,12 @@
 import datetime
 import os as os
 import unittest
-
 import numpy as np
 import pandas as pd
-
-import pyStratAlpha.analyzer.factor.dynamicContext as dynamicContext
+from pyStratAlpha.analyzer.factor import DCAMAnalyzer
+from pyStratAlpha.analyzer.factor import DCAMHelper
 from pyStratAlpha.analyzer.factor.loadData import FactorLoader
-from pyStratAlpha.enums.factor import FactorNormType
+from pyStratAlpha.enums import FactorNormType
 
 
 class TestDynamicContext(unittest.TestCase):
@@ -16,14 +15,14 @@ class TestDynamicContext(unittest.TestCase):
         dir_name = os.path.dirname(os.path.abspath(__file__))
         zip_path = os.path.join(dir_name, 'data')
         factor_path = {
-            'MV': [zip_path + '//factors.csv', 'm'],  # 总市值, 月度频率 -- 分层因子
-            'BP_LF': [zip_path + '//factors.csv', 'm'],  # 最近财报的净资产/总市值, 季度频率 -- 分层因子/alpha测试因子
-            'SP_TTM': [zip_path + '//factors.csv', 'q'],  # 过去12 个月总营业收入/总市值, 季度频率 -- alpha测试因子
-            'GP2Asset': [zip_path + '//factors.csv', 'q'],  # 销售毛利润/总资产, 季度频率 -- alpha测试因子
-            'RETURN': [zip_path + '//factors.csv', 'm']  # 收益,月度频率
+            'MV': {'path': zip_path + '//factors.csv', 'freq': 'm'},  # 总市值, 月度频率 -- 分层因子
+            'BP_LF': {'path': zip_path + '//factors.csv', 'freq': 'm'},  # 最近财报的净资产/总市值, 季度频率 -- 分层因子/alpha测试因子
+            'SP_TTM': {'path': zip_path + '//factors.csv', 'freq': 'q'},  # 过去12 个月总营业收入/总市值, 季度频率 -- alpha测试因子
+            'GP2Asset': {'path': zip_path + '//factors.csv', 'freq': 'q'},  # 销售毛利润/总资产, 季度频率 -- alpha测试因子
+            'RETURN': {'path': zip_path + '//factors.csv', 'freq': 'm'}  # 收益,月度频率
         }
 
-        #TODO add more cases
+        # TODO add more cases
         self.factor = FactorLoader(start_date='2010-01-31',
                                    end_date='2010-12-31',
                                    factor_norm_dict={'MV': FactorNormType.Null,
@@ -39,12 +38,14 @@ class TestDynamicContext(unittest.TestCase):
 
         self.result = pd.read_csv(zip_path + '//result.csv')
 
-        self.analyzer = dynamicContext.DCAMAnalyzer(layer_factor=[factor_data['MV']],
-                                                    alpha_factor=[factor_data['BP_LF'], factor_data['SP_TTM'],
-                                                                  factor_data['GP2Asset']],
-                                                    sec_return=factor_data['RETURN'],
-                                                    tiaocang_date=self.factor.get_tiaocang_date(),
-                                                    tiaocang_date_window_size=3)
+        self.helper = DCAMHelper()
+
+        self.analyzer = DCAMAnalyzer(layer_factor=[factor_data['MV']],
+                                     alpha_factor=[factor_data['BP_LF'], factor_data['SP_TTM'],
+                                                   factor_data['GP2Asset']],
+                                     sec_return=factor_data['RETURN'],
+                                     tiaocang_date=self.factor.get_tiaocang_date(),
+                                     tiaocang_date_window_size=3)
 
         tickers = ['000001.SZ', '000002.SZ', '000003.SZ', '000004.SZ', '000005.SZ', '000006.SZ', '000007.SZ',
                    '000008.SZ', '000009.SZ', '000010.SZ']
@@ -62,15 +63,15 @@ class TestDynamicContext(unittest.TestCase):
     def testGetSecGroup(self):
         factor = self.data['factor']
 
-        calculated = self.analyzer.get_sec_group(factor, datetime.datetime(2015, 4, 30))
+        calculated = self.helper.seperate_sec_group(factor, datetime.datetime(2015, 4, 30))
         expected = (['000004.SZ', '000002.SZ'], ['000003.SZ', '000001.SZ'])
         self.assertEqual(calculated, expected)
 
-        calculated = self.analyzer.get_sec_group(factor, datetime.datetime(2015, 6, 30))
+        calculated = self.helper.seperate_sec_group(factor, datetime.datetime(2015, 6, 30))
         expected = (['000008.SZ', '000007.SZ'], ['000005.SZ', '000006.SZ'])
         self.assertEqual(calculated, expected)
 
-        calculated = self.analyzer.get_sec_group(factor, datetime.datetime(2015, 9, 30))
+        calculated = self.helper.seperate_sec_group(factor, datetime.datetime(2015, 9, 30))
         expected = (['000010.SZ'], ['000009.SZ'])
         self.assertEqual(calculated, expected)
 

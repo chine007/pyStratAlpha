@@ -6,6 +6,7 @@ from pyStratAlpha.analyzer.factor.cleanData import get_multi_index_data
 from pyStratAlpha.analyzer.factor.cleanData import get_report_date
 from pyStratAlpha.analyzer.factor.cleanData import get_universe_single_factor
 from pyStratAlpha.analyzer.factor.dynamicContext import DCAMAnalyzer
+from pyStratAlpha.analyzer.factor.dynamicContext import DCAMHelper
 from pyStratAlpha.analyzer.factor.loadData import FactorLoader
 from pyStratAlpha.analyzer.factor.loadData import get_data_div
 from pyStratAlpha.analyzer.factor.norm import get_industry_matrix
@@ -20,6 +21,7 @@ __all__ = ['get_report_date',
            'get_universe_single_factor',
            'get_multi_index_data',
            'DCAMAnalyzer',
+           'DCAMHelper',
            'winsorize',
            'standardize',
            'get_industry_matrix',

@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 from pprint import pprint
-
 import pandas as pd
 from PyFin.DateUtilities import Calendar
 from PyFin.DateUtilities import Date
-
 from pyStratAlpha.analyzer.factor import DCAMAnalyzer
 from pyStratAlpha.analyzer.factor import FactorLoader
 from pyStratAlpha.analyzer.factor import Selector
@@ -16,6 +14,7 @@ from pyStratAlpha.enums import FactorICSign
 from pyStratAlpha.enums import FactorNormType
 from pyStratAlpha.enums import FactorWeightType
 from pyStratAlpha.enums import FreqType
+from pyStratAlpha.enums import FactorNAHandler
 from pyStratAlpha.utils import time_counter
 
 _secSelectedPath = 'sec_selected.csv'
@@ -49,6 +48,7 @@ def dcam_strat_main(factor_loader_params,
     start_date = factor_loader_params['start_date']
     end_date = factor_loader_params['end_date']
     factor_norm_dict = factor_loader_params['factor_norm_dict']
+    na_handler = factor_loader_params.get('na_handler', FactorNAHandler.Drop)
 
     # dcam analyzer params
     factor_weight_type = analyzer_params.get('factor_weight_type', FactorWeightType.ICWeight)
@@ -77,7 +77,8 @@ def dcam_strat_main(factor_loader_params,
 
         factor = FactorLoader(start_date=start_date,
                               end_date=end_date,
-                              factor_norm_dict=factor_norm_dict)
+                              factor_norm_dict=factor_norm_dict,
+                              na_handler=na_handler)
         factor_data = factor.get_factor_data()
     else:
         # TODO
@@ -167,11 +168,12 @@ if __name__ == "__main__":
                                    'INDUSTRY': [FactorNormType.Null, DCAMFactorType.industryFactor, FactorICSign.Null],
                                    'IND_WGT': [FactorNormType.Null, DCAMFactorType.indexWeight, FactorICSign.Null]}
 
-    factor_loader_parameters = {'start_date': '2010-12-05',
-                                'end_date': '2013-12-30',
-                                'factor_norm_dict': factor_norm_dict_parameters}
+    factor_loader_parameters = {'start_date': '2015-01-05',
+                                'end_date': '2016-09-30',
+                                'factor_norm_dict': factor_norm_dict_parameters,
+                                'na_handler': FactorNAHandler.ReplaceWithMedian}
 
-    analyzer_parameters = {'factor_weight_type': FactorWeightType.EqualWeight,
+    analyzer_parameters = {'factor_weight_type': FactorWeightType.ICWeight,
                            'tiaocang_date_window_size': 12}
 
     selector_parameters = {'save_sec_selected': True}
