@@ -46,32 +46,32 @@ def dcam_strat_main(factor_loader_params,
                     portfolio_params,
                     update_params):
     # FactorLoader params
-    start_date = factor_loader_params['startDate']
-    end_date = factor_loader_params['endDate']
-    factor_norm_dict = factor_loader_params['factorNormDict']
+    start_date = factor_loader_params['start_date']
+    end_date = factor_loader_params['end_date']
+    factor_norm_dict = factor_loader_params['factor_norm_dict']
 
     # dcam analyzer params
-    factor_weight_type = analyzer_params.get('factorWeightType', FactorWeightType.ICWeight)
-    tiaocang_date_window_size = analyzer_params.get('tiaoCangDateWindowSize', 12)
-    save_sec_score = analyzer_params.get('saveSecScore', True)
+    factor_weight_type = analyzer_params.get('factor_weight_type', FactorWeightType.ICWeight)
+    tiaocang_date_window_size = analyzer_params.get('tiaocang_date_window_size', 12)
+    save_sec_score = analyzer_params.get('save_sec_score', True)
 
     # selector params
-    save_sec_selected = selector_params.get('saveSecSelected', True)
-    nb_sec_selected_per_industry_min = selector_params.get('nbSecSelectedPerIndustryMin', 5)
-    use_industry_name = selector_params.get('useIndustryName', True)
-    nb_sec_selected_total = selector_params.get('nbSecSelectedTotal', 100)
-    ignore_zero_weight = selector_params.get('ignoreZeroWeight', False)
+    save_sec_selected = selector_params.get('save_sec_selected', True)
+    nb_sec_selected_per_industry_min = selector_params.get('nb_sec_selected_per_industry_min', 5)
+    use_industry_name = selector_params.get('use_industry_name', True)
+    nb_sec_selected_total = selector_params.get('nb_sec_selected_total', 100)
+    ignore_zero_weight = selector_params.get('ignore_zero_weight', False)
 
     # portfolio params
-    benchmark_sec_id = portfolio_params.get('benchmarkSecID', '000905.SH')
-    re_balance_freq = portfolio_params.get('rebalanceFreq', FreqType.EOM)
-    initial_capital = portfolio_params.get('initialCapital', 1000000000.0)
-    filter_return_on_tiaocang_date = portfolio_params.get('filterReturnOnTiaoCangDate', 0.09)
-    data_source = portfolio_params.get('dataSource', DataSource.WIND)
+    benchmark_sec_id = portfolio_params.get('benchmark_sec_id', '000905.SH')
+    re_balance_freq = portfolio_params.get('re_balance_freq', FreqType.EOM)
+    initial_capital = portfolio_params.get('initial_capital', 1000000000.0)
+    filter_return_on_tiaocang_date = portfolio_params.get('filter_return_on_tiaocang_date', 0.09)
+    data_source = portfolio_params.get('data_source', DataSource.WIND)
 
-    update_factor = update_params.get('updateFactor', False)
-    update_sec_score = update_params.get('updateSecScore', False)
-    update_sec_select = update_params.get('updateSecSelect', False)
+    update_factor = update_params.get('update_factor', False)
+    update_sec_score = update_params.get('update_sec_score', False)
+    update_sec_select = update_params.get('update_sec_select', False)
 
     if update_factor:
 
@@ -137,47 +137,54 @@ def dcam_strat_main(factor_loader_params,
 
 
 if __name__ == "__main__":
-    factorNormDict = {'MV': [FactorNormType.Null, DCAMFactorType.layerFactor, FactorICSign.Null],
-                      'BP_LF': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.layerFactor, FactorICSign.Null],
-                      'EquityGrowth_YOY': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.layerFactor,
+    factor_norm_dict_parameters = {'MV': [FactorNormType.Null, DCAMFactorType.layerFactor, FactorICSign.Null],
+                                   'BP_LF': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.layerFactor,
+                                             FactorICSign.Null],
+                                   'EquityGrowth_YOY': [FactorNormType.IndustryAndCapNeutral,
+                                                        DCAMFactorType.layerFactor,
+                                                        FactorICSign.Null],
+                                   'ROE': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.layerFactor,
                                            FactorICSign.Null],
-                      'ROE': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.layerFactor, FactorICSign.Null],
-                      'STDQ': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.layerFactor, FactorICSign.Null],
-                      'EP2_TTM': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.alphaFactor,
-                                  FactorICSign.Positive],
-                      'SP_TTM': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.alphaFactor,
-                                 FactorICSign.Positive],
-                      'GP2Asset': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.alphaFactor,
-                                   FactorICSign.Negative],
-                      'PEG': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.alphaFactor, FactorICSign.Positive],
-                      'ProfitGrowth_Qr_YOY': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.alphaFactor,
+                                   'STDQ': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.layerFactor,
+                                            FactorICSign.Null],
+                                   'EP2_TTM': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.alphaFactor,
+                                               FactorICSign.Positive],
+                                   'SP_TTM': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.alphaFactor,
                                               FactorICSign.Positive],
-                      'TO_adj': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.alphaFactor,
-                                 FactorICSign.Negative],
-                      'PPReversal': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.alphaFactor,
-                                     FactorICSign.Negative],
-                      'RETURN': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.returnFactor, FactorICSign.Null],
-                      'INDUSTRY': [FactorNormType.Null, DCAMFactorType.industryFactor, FactorICSign.Null],
-                      'IND_WGT': [FactorNormType.Null, DCAMFactorType.indexWeight, FactorICSign.Null]}
+                                   'GP2Asset': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.alphaFactor,
+                                                FactorICSign.Negative],
+                                   'PEG': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.alphaFactor,
+                                           FactorICSign.Positive],
+                                   'ProfitGrowth_Qr_YOY': [FactorNormType.IndustryAndCapNeutral,
+                                                           DCAMFactorType.alphaFactor,
+                                                           FactorICSign.Positive],
+                                   'TO_adj': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.alphaFactor,
+                                              FactorICSign.Negative],
+                                   'PPReversal': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.alphaFactor,
+                                                  FactorICSign.Negative],
+                                   'RETURN': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.returnFactor,
+                                              FactorICSign.Null],
+                                   'INDUSTRY': [FactorNormType.Null, DCAMFactorType.industryFactor, FactorICSign.Null],
+                                   'IND_WGT': [FactorNormType.Null, DCAMFactorType.indexWeight, FactorICSign.Null]}
 
-    factorLoaderParams = {'startDate': '2010-12-05',
-                          'endDate': '2016-12-30',
-                          'factorNormDict': factorNormDict}
+    factor_loader_parameters = {'start_date': '2010-12-05',
+                                'end_date': '2013-12-30',
+                                'factor_norm_dict': factor_norm_dict_parameters}
 
-    analyzerParams = {'factorWeightType': FactorWeightType.EqualWeight,
-                      'tiaoCangDateWindowSize': 12}
+    analyzer_parameters = {'factor_weight_type': FactorWeightType.EqualWeight,
+                           'tiaocang_date_window_size': 12}
 
-    selectorParams = {'saveSecSelected': True}
+    selector_parameters = {'save_sec_selected': True}
 
-    portfolioParams = {'benchmarkSecID': '000905.SH',
-                       'rebalanceFreq': FreqType.EOM}
+    portfolio_parameters = {'benchmark_sec_id': '000905.SH',
+                            're_balance_freq': FreqType.EOM}
 
-    updateParams = {'updateFactor': True,
-                    'updateSecScore': True,
-                    'updateSecSelect': True}
+    update_parameters = {'update_factor': True,
+                         'update_sec_score': True,
+                         'update_sec_select': True}
 
-    dcam_strat_main(factorLoaderParams,
-                    analyzerParams,
-                    selectorParams,
-                    portfolioParams,
-                    updateParams)
+    dcam_strat_main(factor_loader_params=factor_loader_parameters,
+                    analyzer_params=analyzer_parameters,
+                    selector_params=selector_parameters,
+                    portfolio_params=portfolio_parameters,
+                    update_params=update_parameters)

@@ -7,7 +7,9 @@ from pyStratAlpha.enums.factor import DCAMFactorType
 from pyStratAlpha.enums.factor import FactorICSign
 from pyStratAlpha.enums.factor import FactorNormType
 from pyStratAlpha.enums.factor import FactorWeightType
+from pyStratAlpha.enums.factor import FactorNAHandler
 from pyStratAlpha.enums.freq import FreqType
+
 
 __all__ = ['DataSource',
            'ReturnType',
@@ -16,4 +18,5 @@ __all__ = ['DataSource',
            'DCAMFactorType',
            'FactorICSign',
            'FreqType',
-           'FactorWeightType']
+           'FactorWeightType',
+           'FactorNAHandler']

@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import unittest
-
 import numpy as np
 import pandas as pd
 from numpy.testing import assert_array_almost_equal
 from pandas.util.testing import assert_series_equal
-
 from pyStratAlpha.analyzer.factor.norm import get_industry_matrix
 from pyStratAlpha.analyzer.factor.norm import neutralize
 from pyStratAlpha.analyzer.factor.norm import normalize

@@ -5,8 +5,9 @@ import pandas as pd
 from PyFin.Utilities import pyFinAssert
 from pyStratAlpha.analyzer.factor.cleanData import adjust_factor_date
 from pyStratAlpha.analyzer.factor.cleanData import get_universe_single_factor
-from pyStratAlpha.analyzer.factor.cleanData import normalize_single_factor_data
-from pyStratAlpha.enums.factor import FactorNormType
+from pyStratAlpha.analyzer.factor.norm import normalize_single_factor_data
+from pyStratAlpha.enums import FactorNormType
+from pyStratAlpha.enums import FactorNAHandler
 from pyStratAlpha.utils import get_pos_adj_date
 from pyStratAlpha.utils import unzip_csv_folder
 
@@ -87,7 +88,8 @@ class FactorLoader(object):
                  freq='m',
                  zip_path="..//..//data",
                  factor_path_dict=_factorPathDict,
-                 date_format='%Y%m%d'):
+                 date_format='%Y%m%d',
+                 na_handler=FactorNAHandler.Drop):
         """
         :param start_date: str/datetime.datetime, 提取因子数据的开始日期
         :param end_date: str/datetime.datetime, 提取因子数据的结束日期
@@ -106,6 +108,7 @@ class FactorLoader(object):
         self._tiaocangDate = []
         self._factorPathDict = factor_path_dict
         self._dateFormat = date_format
+        self._na_handler = na_handler
         # 由于因子csv文件较大,所以默认存储为压缩格式的文件, 第一次使用时自动解压缩
         unzip_csv_folder(zip_path)
 
@@ -118,12 +121,14 @@ class FactorLoader(object):
             path_to_use = self._factorPathDict[name]['path']
             original_freq = self._factorPathDict[name]['freq']
             if original_freq != self._freq:
-                factor_raw = get_universe_single_factor(path_to_use, factor_name=name, date_format=self._dateFormat)
+                factor_raw = get_universe_single_factor(path_to_use, factor_name=name, date_format=self._dateFormat,
+                                                        na_hanlder=self._na_handler)
                 factors = adjust_factor_date(factor_raw, self._startDate, self._endDate, self._freq)
             else:
                 factor_raw = get_universe_single_factor(path_to_use, index_name=['tiaoCangDate', 'secID'],
                                                         factor_name=name,
-                                                        date_format=self._dateFormat)
+                                                        date_format=self._dateFormat,
+                                                        na_hanlder=self._na_handler)
                 factor_raw = factor_raw.loc[factor_raw.index.get_level_values('tiaoCangDate') >= self._startDate]
                 factors = factor_raw.loc[factor_raw.index.get_level_values('tiaoCangDate') <= self._endDate]
             factors.name = name

@@ -31,3 +31,10 @@ class FactorICSign(IntEnum):
 class FactorWeightType(IntEnum):
     EqualWeight = 1
     ICWeight = 2
+
+
+@unique
+class FactorNAHandler(IntEnum):
+    Drop = 0
+    ReplaceWithMean = 1
+    ReplaceWithMedian = 2

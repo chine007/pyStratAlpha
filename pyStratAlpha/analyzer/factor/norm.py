@@ -4,6 +4,9 @@ import numpy as np
 import pandas as pd
 from PyFin.Utilities import pyFinWarning
 from sklearn.linear_model import LinearRegression
+from pyStratAlpha.enums import FactorNAHandler
+from pyStratAlpha.analyzer.factor.cleanData import factor_na_handler
+from pyStratAlpha.analyzer.factor.cleanData import get_multi_index_data
 
 
 def winsorize(factors, nb_std_or_quantile=3):
@@ -64,7 +67,7 @@ def get_industry_matrix(industries, mkt_cap=None):
     return ret
 
 
-def neutralize(factors, industries, caps=None):
+def neutralize(factors, industries, caps=None, na_handler=FactorNAHandler.ReplaceWithMedian):
     """
     :param factors: pd.Series, 原始截面因子
     :param industries: pd.Series, value = 行业名称
@@ -88,7 +91,7 @@ def neutralize(factors, industries, caps=None):
     industries = industries.fillna('other')
     # 把没有市值的设置成均值
     if lcap is not None:
-        lcap = lcap.fillna(lcap.median())
+        lcap = factor_na_handler(lcap, na_handler)
 
     linreg = LinearRegression(fit_intercept=False)
     y = factors
@@ -113,6 +116,28 @@ def normalize(factors, industries=None, caps=None):
     ret = neutralize(y, industries, caps)
     return ret
 
+
+def normalize_single_factor_data(factors, industries=None, caps=None):
+    """
+    :param factors: pd.Series, multi index = [tiaoCangDate, secID], value = factors
+    :param industries:
+    :param caps:
+    :return: 去极值、中性化、标准化的因子
+    """
+    returns = pd.Series(name=factors.name)
+    tiaocang_date = sorted(set(factors.index.get_level_values('tiaoCangDate')))
+    for date in tiaocang_date:
+        factor_to_use = get_multi_index_data(factors, 'tiaoCangDate', date)
+        industry_to_use = get_multi_index_data(industries, 'tiaoCangDate',
+                                               date) if industries is not None else None
+        cap_to_use = get_multi_index_data(caps, 'tiaoCangDate', date) if caps is not None else None
+        data_normed = normalize(factor_to_use, industry_to_use, cap_to_use)
+        returns = returns.append(data_normed)
+
+    # save in multi index format
+    index = pd.MultiIndex.from_tuples(returns.index, names=['tiaoCangDate', 'secID'])
+    returns = pd.Series(data=returns.values, index=index, name=factors.name)
+    return returns
 
 if __name__ == "__main__":
     index = ['000001.SZ', '000002.SZ', '000003.SZ', '000004.SZ', '000005.SZ', '000006.SZ', '000007.SZ', '000008.SZ',
