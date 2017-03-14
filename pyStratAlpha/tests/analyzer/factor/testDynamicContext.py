@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
+
 import datetime
 import os as os
 import unittest
-
 import numpy as np
 import pandas as pd
 from pandas.util.testing import assert_frame_equal
 from pandas.util.testing import assert_series_equal
-
 from pyStratAlpha.analyzer.factor import DCAMAnalyzer
 from pyStratAlpha.analyzer.factor import DCAMHelper
 from pyStratAlpha.analyzer.factor.dynamicContext import sigmoid_modif
@@ -27,7 +26,10 @@ class TestDynamicContext(unittest.TestCase):
             'RETURN': {'path': zip_path + '//factors.csv', 'freq': 'm'}  # 收益,月度频率
         }
 
-        # TODO add more cases
+        # TODO
+        # 从factor_loader / dcam analyer中的几个重要参数进行组合, 生成2-3个独立的dcamanalyer类, 然后每一步分别对这几个类进行测试
+        # 这样最大限度的覆盖所有代码以及所有情况
+        # 标准结果保存在csv中, 一个一个拿出来对比即可
         factor_loader = FactorLoader(start_date='2010-01-31',
                                      end_date='2010-12-31',
                                      factor_norm_dict={'MV': FactorNormType.Null,
@@ -66,7 +68,8 @@ class TestDynamicContext(unittest.TestCase):
         simple_factor = pd.Series(simple_factor, index=index)
 
         self.data = {'simple_factor': simple_factor,
-                     'alpha_factor': alpha_factor}
+                     'alpha_factor': alpha_factor,
+                     'layer_factor': layer_factor}
 
     def testGetSecGroup(self):
         factor = self.data['simple_factor']
@@ -99,7 +102,8 @@ class TestDynamicContext(unittest.TestCase):
         assert_frame_equal(calculated, expected)
 
     def testCalcRankIC(self):
-        calculated = self.analyzer.calc_rank_ic(self.analyzer._layerFactor[0])
+        layer_factor = self.data['layer_factor']
+        calculated = self.analyzer.calc_rank_ic(layer_factor)
         expected = [
             pd.DataFrame({'BP_LF': [-0.183456213042, -0.0305530469964, 0.271971968356, -0.0212066069429,
                                     0.0436920786066, 0.157066165089, -0.0661863616898],
