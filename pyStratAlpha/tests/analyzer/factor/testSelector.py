@@ -5,140 +5,120 @@ import unittest
 
 import pandas as pd
 
-from pyStratAlpha.analyzer.factor.loadData import FactorLoader
 from pyStratAlpha.analyzer.factor.selector import Selector
 from pyStratAlpha.analyzer.indexComp.indexComp import IndexComp
-from pyStratAlpha.enums import DCAMFactorType
-from pyStratAlpha.enums import FactorICSign
-from pyStratAlpha.enums import FactorNormType
 
 
 class TestSelector(unittest.TestCase):
     def setUp(self):
-        dirName = os.path.dirname(os.path.abspath(__file__))
-        zipPath = os.path.join(dirName, 'data')
-        factorPathDict = {
-            'score': [zipPath + '//secScore.csv', 'm'],
-            'INDUSTRY': [zipPath + '//INDUSTRY.csv', 'm'],
-            'IND_WGT': [zipPath + '//IndustryWeight.csv', 'm']
-        }
+        dir_name = os.path.dirname(os.path.abspath(__file__))
+        file_path = os.path.join(dir_name, 'data//selector2.csv')
 
-        self.factor = FactorLoader(start_date='2015-10-31',
-                                   end_date='2016-10-31',
-                                   factor_norm_dict={'score': [FactorNormType.Null, DCAMFactorType.industryFactor,
-                                                               FactorICSign.Null],
-                                                     'INDUSTRY': [FactorNormType.Null, DCAMFactorType.industryFactor,
-                                                                  FactorICSign.Null],
-                                                     'IND_WGT': [FactorNormType.Null, DCAMFactorType.industryFactor,
-                                                                 FactorICSign.Null]},
-                                   zip_path=zipPath,
-                                   factor_path_dict=factorPathDict
-                                   )
-        factorData = self.factor.get_norm_factor_data()
+        factor_data = pd.read_csv(file_path)
+        index = pd.MultiIndex.from_arrays(
+            [[datetime.datetime.strptime(date, '%Y/%m/%d') for date in factor_data['tiaoCangDate1'].dropna().values],
+             factor_data['secID1'].dropna().values], names=['tiaoCangDate', 'secID'])
+        factor_score = pd.Series(data=factor_data['score'].dropna().values, index=index, name='score')
 
-        indexComp = IndexComp(industry_weight=factorData['IND_WGT'])
-        selector = Selector(sec_score=factorData['score'],
-                            industry=factorData['INDUSTRY'],
-                            index_comp=indexComp,
+        index = pd.MultiIndex.from_arrays(
+            [[datetime.datetime.strptime(date, '%Y/%m/%d') for date in factor_data['tiaoCangDate2'].dropna().values],
+             factor_data['secID2'].dropna().values], names=['tiaoCangDate', 'secID'])
+        factor_industry = pd.Series(data=factor_data['INDUSTRY'].dropna().values, index=index, name='INDUSTRY')
+
+        index = pd.MultiIndex.from_arrays(
+            [[datetime.datetime.strptime(date, '%Y/%m/%d') for date in factor_data['tiaoCangDate3'].dropna().values],
+             factor_data['secID3'].dropna().values], names=['tiaoCangDate', 'secID'])
+        factor_ind_wgt = pd.Series(data=factor_data['IND_WGT'].dropna().values, index=index, name='IND_WGT')
+
+        index_comp = IndexComp(industry_weight=factor_ind_wgt)
+        selector = Selector(sec_score=factor_score,
+                            industry=factor_industry,
+                            index_comp=index_comp,
                             nb_sec_selected_per_industry_min=5,
                             use_industry_name=True, nb_sec_selected_total=100,
                             ignore_zero_weight=False)
 
         selector.industry_neutral = True
 
-        #TODO test case when selector is not industry neutral
+        # TODO test case when selector is not industry neutral
         self.selector = selector
 
+        self.test_result_neutral = factor_data['result_neutral'].dropna().values
+        self.test_result_non_neutral = factor_data['result_non_neutral'].dropna().values
+
     def testSecSelectedUniverse(self):
+        self.selector.industry_neutral = True
         calculated = self.selector.sec_selected_universe()
-        expected = ['601898.SH', '600789.SH', '002817.SZ', '000025.SZ', '300421.SZ', '300235.SZ', '300270.SZ',
-                    '000056.SZ', '000713.SZ', '001979.SZ', '600614.SH', '300305.SZ', '000895.SZ', '600005.SH',
-                    '002125.SZ', '600371.SH', '600715.SH', '600691.SH', '300068.SZ', '002701.SZ', '600350.SH',
-                    '601158.SH', '600354.SH', '000692.SZ', '300287.SZ', '300405.SZ', '000711.SZ', '300487.SZ',
-                    '002119.SZ', '601766.SH', '600858.SH', '002583.SZ', '601618.SH', '002388.SZ', '300085.SZ',
-                    '002075.SZ', '000793.SZ', '600010.SH', '300275.SZ', '000960.SZ', '603678.SH', '002019.SZ',
-                    '600753.SH', '000917.SZ', '603100.SH', '600781.SH', '600999.SH', '000952.SZ', '600379.SH',
-                    '300167.SZ', '600893.SH', '002798.SZ', '300334.SZ', '601558.SH', '300354.SZ', '300540.SZ',
-                    '601106.SH', '600854.SH', '002209.SZ', '600685.SH', '601888.SH', '300517.SZ', '300500.SZ',
-                    '300003.SZ', '600643.SH', '600649.SH', '300412.SZ', '300015.SZ', '300286.SZ', '000729.SZ',
-                    '600986.SH', '300218.SZ', '600475.SH', '002633.SZ', '300479.SZ', '603555.SH', '600192.SH',
-                    '002580.SZ', '600173.SH', '600746.SH', '603006.SH', '600898.SH', '600774.SH', '000100.SZ',
-                    '000779.SZ', '600306.SH', '603223.SH', '002012.SZ', '300072.SZ', '600704.SH', '000622.SZ',
-                    '600787.SH', '300292.SZ', '600845.SH', '603859.SH', '300404.SZ', '600448.SH', '000825.SZ',
-                    '600895.SH', '601600.SH', '600985.SH', '600618.SH', '601069.SH', '600612.SH', '000157.SZ',
-                    '300420.SZ', '600936.SH', '002473.SZ', '000538.SZ', '002014.SZ', '002004.SZ', '601933.SH',
-                    '600872.SH', '000748.SZ', '000953.SZ', '601163.SH', '000628.SZ', '000663.SZ', '002591.SZ',
-                    '600664.SH', '600697.SH', '002816.SZ', '002055.SZ', '000752.SZ', '600081.SH', '600654.SH',
-                    '002753.SZ', '603993.SH', '000656.SZ', '600802.SH', '300400.SZ', '000595.SZ', '300462.SZ',
-                    '600633.SH', '300146.SZ', '300475.SZ', '000939.SZ', '002363.SZ', '300408.SZ', '603158.SH',
-                    '300274.SZ', '300478.SZ', '000876.SZ', '300168.SZ', '600513.SH', '300539.SZ', '600308.SH',
-                    '002246.SZ', '600436.SH', '603227.SH', '300107.SZ', '603606.SH', '002415.SZ', '300537.SZ',
-                    '600012.SH', '002239.SZ', '601390.SH', '300293.SZ', '300244.SZ', '600719.SH', '600152.SH',
-                    '603159.SH', '300552.SZ', '002360.SZ', '601006.SH', '000789.SZ', '600835.SH', '000690.SZ',
-                    '601198.SH', '000063.SZ', '603421.SH', '603268.SH', '601318.SH', '600833.SH', '603515.SH',
-                    '600498.SH', '603199.SH', '002748.SZ', '603889.SH', '002682.SZ', '600463.SH', '000682.SZ',
-                    '000978.SZ', '600083.SH', '601727.SH', '002765.SZ', '300407.SZ', '603031.SH', '002785.SZ',
-                    '002517.SZ', '000670.SZ', '300067.SZ', '601669.SH', '000856.SZ', '601177.SH', '600796.SH',
-                    '000338.SZ', '601169.SH', '000555.SZ', '601958.SH', '300328.SZ', '300058.SZ', '601699.SH',
-                    '600156.SH', '600423.SH', '300240.SZ', '002321.SZ', '000590.SZ', '600714.SH', '600038.SH',
-                    '300376.SZ', '600212.SH', '601798.SH', '600749.SH', '000625.SZ', '300106.SZ', '603778.SH',
-                    '600027.SH', '600671.SH', '603519.SH', '300347.SZ', '000880.SZ', '300418.SZ', '600061.SH',
-                    '600919.SH', '600487.SH', '300374.SZ', '600189.SH', '600766.SH', '002013.SZ', '600408.SH',
-                    '002687.SZ', '600547.SH', '600223.SH', '002040.SZ', '603701.SH', '600692.SH', '600926.SH',
-                    '600237.SH', '600883.SH', '603022.SH', '002608.SZ', '000785.SZ', '600768.SH', '600138.SH',
-                    '601988.SH', '600637.SH', '600031.SH', '600604.SH', '002634.SZ', '000718.SZ', '600867.SH',
-                    '600098.SH', '002732.SZ', '600320.SH', '002314.SZ', '300310.SZ', '600648.SH', '300435.SZ',
-                    '600624.SH', '300080.SZ', '601398.SH', '000062.SZ', '300046.SZ', '300425.SZ', '002331.SZ',
-                    '300483.SZ', '002385.SZ', '603716.SH', '600183.SH', '603015.SH', '000503.SZ', '300402.SZ',
-                    '600642.SH', '002289.SZ', '601919.SH', '300099.SZ', '603019.SH', '600795.SH', '002521.SZ',
-                    '002060.SZ', '601998.SH', '300104.SZ', '000418.SZ', '600028.SH', '002806.SZ', '300416.SZ',
-                    '000708.SZ', '600011.SH', '002241.SZ', '300139.SZ', '002221.SZ', '600882.SH', '603667.SH',
-                    '603160.SH', '600085.SH', '000002.SZ', '000671.SZ', '002049.SZ', '600866.SH', '002773.SZ',
-                    '601611.SH']
+        expected = list(self.test_result_neutral)
+        self.assertEqual(calculated, expected)
+
+        self.selector.industry_neutral = False
+        calculated = self.selector.sec_selected_universe()
+        expected = list(self.test_result_non_neutral)
         self.assertEqual(calculated, expected)
 
     def testSecSelection(self):
+        self.selector.industry_neutral = True
         self.selector.sec_selection()
         calculated = self.selector._secSelected
-        expected = pd.Series(
-            {datetime.datetime(2016, 10, 31): [
-                '300106.SZ', '600371.SH', '002385.SZ', '600354.SH', '000713.SZ', '000876.SZ', '600189.SH', '002321.SZ',
-                '600408.SH', '601699.SH', '601898.SH', '600714.SH', '600882.SH', '600028.SH', '600746.SH', '601163.SH',
-                '300305.SZ', '002591.SZ', '300487.SZ', '300537.SZ', '300107.SZ', '603227.SH', '300072.SZ', '002125.SZ',
-                '000953.SZ', '300067.SZ', '600618.SH', '002246.SZ', '002748.SZ', '300539.SZ', '300478.SZ', '300218.SZ',
-                '002221.SZ', '002360.SZ', '002004.SZ', '600423.SH', '300405.SZ', '600985.SH', '002753.SZ', '600691.SH',
-                '000825.SZ', '600010.SH', '000708.SZ', '600005.SH', '002075.SZ', '601069.SH', '600768.SH', '601600.SH',
-                '600614.SH', '002806.SZ', '600766.SH', '601958.SH', '000960.SZ', '600547.SH', '603993.SH', '603160.SH',
-                '300328.SZ', '002049.SZ', '600237.SH', '603515.SH', '002119.SZ', '002241.SZ', '002055.SZ', '002289.SZ',
-                '002388.SZ', '300139.SZ', '603678.SH', '000670.SZ', '300046.SZ', '600183.SH', '300408.SZ', '300475.SZ',
-                '000418.SZ', '000100.SZ', '002473.SZ', '600854.SH', '603519.SH', '600866.SH', '000729.SZ', '002732.SZ',
-                '600872.SH', '603031.SH', '000752.SZ', '000895.SZ', '300146.SZ', '000779.SZ', '600156.SH', '002687.SZ',
-                '603889.SH', '002634.SZ', '600448.SH', '603555.SH', '600152.SH', '002701.SZ', '603268.SH', '000663.SZ',
-                '600612.SH', '002798.SZ', '603022.SH', '002012.SZ', '600308.SH', '002014.SZ', '002521.SZ', '300015.SZ',
-                '600781.SH', '600664.SH', '600796.SH', '002773.SZ', '600833.SH', '002019.SZ', '600671.SH', '000952.SZ',
-                '600867.SH', '300404.SZ', '300244.SZ', '600789.SH', '600436.SH', '600085.SH', '300347.SZ', '600513.SH',
-                '000503.SZ', '000590.SZ', '000538.SZ', '300412.SZ', '300003.SZ', '601158.SH', '300334.SZ', '600011.SH',
-                '600795.SH', '600098.SH', '300425.SZ', '600027.SH', '000692.SZ', '000690.SZ', '600719.SH', '000939.SZ',
-                '600642.SH', '300240.SZ', '600692.SH', '601919.SH', '600350.SH', '600787.SH', '600012.SH', '603223.SH',
-                '002040.SZ', '601006.SH', '600649.SH', '600604.SH', '000656.SZ', '000718.SZ', '600895.SH', '600648.SH',
-                '600223.SH', '600463.SH', '001979.SZ', '600173.SH', '000671.SZ', '000056.SZ', '000002.SZ', '601933.SH',
-                '000785.SZ', '600704.SH', '600774.SH', '000062.SZ', '600898.SH', '600858.SH', '600306.SH', '600697.SH',
-                '601888.SH', '600138.SH', '600749.SH', '000978.SZ', '603199.SH', '000711.SZ', '600212.SH', '000628.SZ',
-                '600083.SH', '600624.SH', '600753.SH', '600802.SH', '600883.SH', '300374.SZ', '002785.SZ', '002314.SZ',
-                '000789.SZ', '601611.SH', '603778.SH', '601669.SH', '002060.SZ', '600986.SH', '601390.SH', '300517.SZ',
-                '300500.SZ', '601618.SH', '600379.SH', '603859.SH', '300286.SZ', '603606.SH', '300407.SZ', '300068.SZ',
-                '603015.SH', '601558.SH', '600475.SH', '300376.SZ', '600192.SH', '000682.SZ', '601727.SH', '300274.SZ',
-                '603100.SH', '002580.SZ', '600893.SH', '002608.SZ', '600685.SH', '600038.SH', '002013.SZ', '600654.SH',
-                '300270.SZ', '300287.SZ', '300479.SZ', '600845.SH', '002415.SZ', '300167.SZ', '603019.SH', '002331.SZ',
-                '300552.SZ', '000748.SZ', '300085.SZ', '300168.SZ', '000555.SZ', '300462.SZ', '300235.SZ', '002517.SZ',
-                '600637.SH', '300058.SZ', '300418.SZ', '300104.SZ', '600715.SH', '600936.SH', '600633.SH', '000917.SZ',
-                '000793.SZ', '000063.SZ', '300292.SZ', '600498.SH', '300310.SZ', '603421.SH', '002583.SZ', '600487.SH',
-                '601998.SH', '601398.SH', '601988.SH', '600919.SH', '601169.SH', '601198.SH', '600999.SH', '600061.SH',
-                '600643.SH', '601318.SH', '000625.SZ', '600081.SH', '603701.SH', '603158.SH', '000622.SZ', '002363.SZ',
-                '002682.SZ', '603006.SH', '002765.SZ', '000025.SZ', '002239.SZ', '000338.SZ', '300354.SZ', '601106.SH',
-                '300275.SZ', '002633.SZ', '601798.SH', '300080.SZ', '300293.SZ', '300402.SZ', '300416.SZ', '300483.SZ',
-                '300435.SZ', '601766.SH', '601177.SH', '600031.SH', '000856.SZ', '002209.SZ', '300400.SZ', '600320.SH',
-                '600835.SH', '300420.SZ', '300540.SZ', '300421.SZ', '300099.SZ', '603159.SH', '000157.SZ', '000595.SZ',
-                '000880.SZ', '002817.SZ', '603716.SH', '600926.SH', '603667.SH', '002816.SZ']
-            })
-        pd.util.testing.assert_series_equal(calculated, expected)
+        expected = [['000034.SZ', '600201.SH', '000048.SZ', '002714.SZ', '600598.SH', '600965.SH', '002157.SZ',
+                     '600226.SH', '600381.SH', '600583.SH', '600759.SH', '601857.SH', '600157.SH', '601808.SH',
+                     '002010.SZ', '601216.SH', '002450.SZ', '600299.SH', '002326.SZ', '600061.SH', '300063.SZ',
+                     '300072.SZ', '600176.SH', '002470.SZ', '002004.SZ', '002343.SZ', '600229.SH', '603077.SH',
+                     '600688.SH', '600352.SH', '600889.SH', '600096.SH', '000973.SZ', '002002.SZ', '002643.SZ',
+                     '002258.SZ', '600426.SH', '000627.SZ', '000707.SZ', '600143.SH', '600399.SH', '002075.SZ',
+                     '000761.SZ', '000709.SZ', '600005.SH', '600478.SH', '600338.SH', '002466.SZ', '002460.SZ',
+                     '600330.SH', '600549.SH', '600331.SH', '002600.SZ', '601899.SH', '600687.SH', '300032.SZ',
+                     '300136.SZ', '600074.SH', '300296.SZ', '300207.SZ', '601231.SH', '002179.SZ', '300115.SZ',
+                     '300088.SZ', '002475.SZ', '300014.SZ', '600703.SH', '000670.SZ', '002076.SZ', '600651.SH',
+                     '002519.SZ', '002681.SZ', '002508.SZ', '002668.SZ', '000333.SZ', '002568.SZ', '000568.SZ',
+                     '000796.SZ', '600090.SH', '600597.SH', '000995.SZ', '600073.SH', '600177.SH', '600398.SH',
+                     '002612.SZ', '002640.SZ', '002291.SZ', '002517.SZ', '603001.SH', '002044.SZ', '002071.SZ',
+                     '600086.SH', '002078.SZ', '002701.SZ', '000488.SZ', '002572.SZ', '000587.SZ', '002721.SZ',
+                     '002263.SZ', '600466.SH', '600666.SH', '300267.SZ', '000078.SZ', '600664.SH', '002437.SZ',
+                     '000963.SZ', '300026.SZ', '002019.SZ', '300199.SZ', '300003.SZ', '000590.SZ', '600518.SH',
+                     '300244.SZ', '002294.SZ', '600079.SH', '600566.SH', '000591.SZ', '600276.SH', '002252.SZ',
+                     '002573.SZ', '300056.SZ', '600452.SH', '600863.SH', '600021.SH', '000690.SZ', '600744.SH',
+                     '600674.SH', '600483.SH', '300070.SZ', '600027.SH', '601872.SH', '600026.SH', '600270.SH',
+                     '600548.SH', '600020.SH', '601006.SH', '601880.SH', '600751.SH', '000520.SZ', '000540.SZ',
+                     '000718.SZ', '000150.SZ', '600340.SH', '000046.SZ', '600064.SH', '600376.SH', '000038.SZ',
+                     '000069.SZ', '600606.SH', '000732.SZ', '000620.SZ', '000656.SZ', '600807.SH', '000560.SZ',
+                     '600704.SH', '600361.SH', '600120.SH', '000889.SZ', '000062.SZ', '000715.SZ', '603123.SH',
+                     '000759.SZ', '300144.SZ', '000430.SZ', '002707.SZ', '000007.SZ', '600054.SH', '600421.SH',
+                     '600884.SH', '000068.SZ', '600234.SH', '600277.SH', '600629.SH', '002624.SZ', '002314.SZ',
+                     '002619.SZ', '000546.SZ', '002457.SZ', '600585.SH', '601618.SH', '600068.SH', '002542.SZ',
+                     '002504.SZ', '601669.SH', '601117.SH', '601668.SH', '002506.SZ', '002074.SZ', '300208.SZ',
+                     '600416.SH', '600525.SH', '601727.SH', '002692.SZ', '600869.SH', '601222.SH', '300124.SZ',
+                     '300242.SZ', '600312.SH', '300274.SZ', '600151.SH', '601877.SH', '600150.SH', '000801.SZ',
+                     '300101.SZ', '600562.SH', '002023.SZ', '300182.SZ', '300033.SZ', '002280.SZ', '300297.SZ',
+                     '600446.SH', '002415.SZ', '600654.SH', '002373.SZ', '002657.SZ', '300010.SZ', '002195.SZ',
+                     '000555.SZ', '002383.SZ', '600850.SH', '002236.SZ', '002555.SZ', '300336.SZ', '600637.SH',
+                     '002400.SZ', '300059.SZ', '300104.SZ', '300392.SZ', '000063.SZ', '300017.SZ', '002231.SZ',
+                     '002104.SZ', '300299.SZ', '002089.SZ', '601288.SH', '601009.SH', '601398.SH', '601939.SH',
+                     '601328.SH', '601688.SH', '000776.SZ', '601788.SH', '600999.SH', '600109.SH', '002085.SZ',
+                     '600418.SH', '000887.SZ', '600686.SH', '600066.SH', '600660.SH', '002594.SZ', '000980.SZ',
+                     '000550.SZ', '600166.SH', '002126.SZ', '600835.SH', '600894.SH', '600320.SH', '000008.SZ',
+                     '600582.SH', '600499.SH', '300382.SZ', '002595.SZ', '601766.SH', '601717.SH', '300080.SZ',
+                     '300266.SZ', '300203.SZ', '600031.SH', '300201.SZ', '002535.SZ', '300116.SZ', '601608.SH',
+                     '600848.SH', '002691.SZ', '002526.SZ', '002122.SZ', '300145.SZ', '600243.SH', '600862.SH',
+                     '002690.SZ', '600087.SH', '000556.SZ', '000033.SZ', '000805.SZ', '600709.SH']]
+        self.assertEqual(list(calculated.values), expected)
+
+        self.selector.industry_neutral = False
+        self.selector.sec_selection()
+        calculated = self.selector._secSelected
+        expected = [
+            ['002555.SZ', '002506.SZ', '601872.SH', '002074.SZ', '600177.SH', '300182.SZ', '002573.SZ', '002010.SZ',
+             '600466.SH', '601688.SH', '300033.SZ', '300336.SZ', '000776.SZ', '002280.SZ', '601216.SH', '000540.SZ',
+             '601788.SH', '600835.SH', '600637.SH', '002450.SZ', '600299.SH', '000718.SZ', '600398.SH', '000150.SZ',
+             '300032.SZ', '000560.SZ', '600666.SH', '300297.SZ', '300136.SZ', '300208.SZ', '300267.SZ', '600999.SH',
+             '002400.SZ', '600340.SH', '002612.SZ', '600446.SH', '002415.SZ', '600109.SH', '002085.SZ', '000712.SZ',
+             '000046.SZ', '002326.SZ', '600064.SH', '600074.SH', '300296.SZ', '600061.SH', '000034.SZ', '600201.SH',
+             '600150.SH', '000078.SZ', '600629.SH', '002568.SZ', '600654.SH', '600416.SH', '300059.SZ', '600894.SH',
+             '600026.SH', '600418.SH', '300063.SZ', '600664.SH', '002437.SZ', '600376.SH', '000038.SZ', '600320.SH',
+             '300104.SZ', '000963.SZ', '300207.SZ', '600704.SH', '601901.SH', '000008.SZ', '600525.SH', '000415.SZ',
+             '000063.SZ', '300026.SZ', '300056.SZ', '002019.SZ', '600452.SH', '300072.SZ', '600863.SH', '600381.SH',
+             '002519.SZ', '002373.SZ', '300199.SZ', '002624.SZ', '601318.SH', '600021.SH', '000048.SZ', '601601.SH',
+             '600176.SH', '000887.SZ', '600361.SH', '002681.SZ', '002508.SZ', '601231.SH', '600478.SH', '300392.SZ',
+             '002657.SZ', '600030.SH', '002143.SZ', '000069.SZ', '600686.SH']]
+        self.assertEqual(list(calculated.values), expected)
