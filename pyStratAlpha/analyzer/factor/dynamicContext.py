@@ -273,8 +273,8 @@ class DCAMAnalyzer(object):
             # 分层因子下股票分为两组
             group_low, group_high = DCAMHelper.seperate_sec_group(layerFactor, date)
             # TODO check why length of factorLow <> group_low
-            factor_low = self.get_alpha_factor(group_low, date)
-            factor_high = self.get_alpha_factor(group_high, date)
+            factor_low = DCAMHelper.get_factor_on_date(self._alphaFactor, group_low, date)
+            factor_high = DCAMHelper.get_factor_on_date(self._alphaFactor, group_high, date)
             # 排序的顺序由权重决定
             # 如果权重为正，那么从低到高排序
             # 如果权重为负，那么从高到底排序
