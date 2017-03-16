@@ -54,15 +54,16 @@ def factor_na_handler(factor, handler):
     :return: pd.Series, cleaned factor series
     """
     if handler == FactorNAHandler.Ignore:
-        return factor
-    if handler == FactorNAHandler.Drop:
-        return factor.dropna()
+        ret = factor
+    elif handler == FactorNAHandler.Drop:
+        ret = factor.dropna()
     elif handler == FactorNAHandler.ReplaceWithMean:
-        return factor.fillna(factor.mean())
+        ret = factor.fillna(factor.mean())
     elif handler == FactorNAHandler.ReplaceWithMedian:
-        return factor.fillna(factor.median())
+        ret = factor.fillna(factor.median())
     else:
         raise NotImplementedError
+    return ret
 
 
 def get_universe_single_factor(file_path,

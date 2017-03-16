@@ -48,7 +48,7 @@ def dcam_strat_main(factor_loader_params,
     start_date = factor_loader_params['start_date']
     end_date = factor_loader_params['end_date']
     factor_norm_dict = factor_loader_params['factor_norm_dict']
-    na_handler = factor_loader_params.get('na_handler', FactorNAHandler.Drop)
+    na_handler = factor_loader_params.get('na_handler', FactorNAHandler.Ignore)
 
     # dcam analyzer params
     factor_weight_type = analyzer_params.get('factor_weight_type', FactorWeightType.ICWeight)
@@ -168,8 +168,8 @@ if __name__ == "__main__":
                                    'INDUSTRY': [FactorNormType.Null, DCAMFactorType.industryFactor, FactorICSign.Null],
                                    'IND_WGT': [FactorNormType.Null, DCAMFactorType.indexWeight, FactorICSign.Null]}
 
-    factor_loader_parameters = {'start_date': '2015-01-05',
-                                'end_date': '2016-09-30',
+    factor_loader_parameters = {'start_date': '2010-06-05',
+                                'end_date': '2012-09-30',
                                 'factor_norm_dict': factor_norm_dict_parameters,
                                 'na_handler': FactorNAHandler.ReplaceWithMedian}
 

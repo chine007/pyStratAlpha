@@ -52,23 +52,56 @@ class DCAMHelper(object):
         return data
 
     @classmethod
-    def get_factor_on_date(cls, factor, factor_names, sec_ids, date):
+    def get_factor_on_date(cls, factors, sec_ids, date):
         """
-        :param factor: list, element = pd.Series, multiindex = [tiaoCangdate, seci]
-        :param factor_names: list of str, names of factors in factor list
+        :param factors: list, element = pd.Series, multiindex = [tiaoCangdate, seci]
         :param sec_ids: list of sec ids
         :param date: datetime, 调仓日
         :return: pd.DataFrame, index = sec_ids, col = [factor]
         给定某一时间, 和股票代码列表, 返回因子列表
         """
         ret = pd.DataFrame()
-        for i in range(len(factor)):
-            data = get_multi_index_data(factor[i], 'tiaoCangDate', date, 'secID', sec_ids)
+        for i in range(len(factors)):
+            data = get_multi_index_data(factors[i], 'tiaoCangDate', date, 'secID', sec_ids)
             data = data.reset_index().drop('tiaoCangDate', axis=1)
             data = data.set_index('secID')
             ret = pd.concat([ret, data], axis=1)
-        ret.columns = factor_names
+        ret.columns = [factor.name for factor in factors]
         return ret
+
+    @classmethod
+    def calc_rank_ic(cls, layer_factor, alpha_factors, sec_return, tiaocang_date, na_handler):
+        """
+        :param layer_factor: pd.Series, 分层因子
+        :param alpha_factors: list of pd.Series, alpha_factor构成的list
+        :param sec_return: multi index pd.Series,
+        :param tiaocang_date: list, datetime.datetime. 调仓日构成的list
+        :param na_handler: enum， 如何处理na的枚举变量
+        :return: pd.DataFrame, index = tiaocang_date, col = [alpha factor names]
+        给定分层因子，计算每个调仓日对应的alpha因子IC
+        """
+        alpha_factor_names = [alpha_factor.name for alpha_factor in alpha_factors]
+        low = pd.DataFrame(index=tiaocang_date, columns=alpha_factor_names)
+        high = pd.DataFrame(index=tiaocang_date, columns=alpha_factor_names)
+
+        for j in range(0, len(tiaocang_date) - 1):  # 对时间做循环，得到每个时间点的rankIC
+            date = tiaocang_date[j]
+            next_date = tiaocang_date[j + 1]
+            group_low, group_high = DCAMHelper.seperate_sec_group(layer_factor, date)  # 分组
+            return_low = DCAMHelper.get_sec_return_on_date(sec_return, group_low, next_date)
+            return_high = DCAMHelper.get_sec_return_on_date(sec_return, group_high, next_date)  # 得到下期收益序列
+            factor_low = DCAMHelper.get_factor_on_date(alpha_factors, group_low, date)
+            factor_high = DCAMHelper.get_factor_on_date(alpha_factors, group_high, date)  # 得到当期因子序列
+            table_low = pd.concat([return_low, factor_low], axis=1)
+            table_high = pd.concat([return_high, factor_high], axis=1)
+            table_low = factor_na_handler(table_low, na_handler)
+            table_high = factor_na_handler(table_high, na_handler)
+            for k in alpha_factor_names:
+                tmp_low, _ = st.spearmanr(table_low['RETURN'], table_low[k])
+                tmp_high, _ = st.spearmanr(table_high['RETURN'], table_high[k])
+                low[k][j] = tmp_low
+                high[k][j] = tmp_high
+        return low, high
 
 
 class DCAMAnalyzer(object):
@@ -98,68 +131,29 @@ class DCAMAnalyzer(object):
         self._factorWeightType = factor_weight_type
         self._alphaFactorSign = alpha_factor_sign
         self._na_handler = na_handler
+        self._rank_ic = None
         if self._factorWeightType == FactorWeightType.EqualWeight:
             pyFinAssert(len(self._alphaFactorSign) == len(self._alphaFactor), ValueError,
                         "length of alpha_factor_sign({0}), does not equal to that of alpha factor({1})".format(
-                                len(self._alphaFactorSign), len(self._alphaFactor)))
+                            len(self._alphaFactorSign), len(self._alphaFactor)))
 
-    def get_sec_return(self, sec_ids, date):
+    def calc_rank_ic(self):
         """
-        :param sec_ids: list of sec ids
-        :param date: datetime, 调仓日
-        :return: pd.Series, index = sec ID
-        给定某一时间和股票代码列表, 返回前一个调仓日至当前调仓日的股票收益
+        :param
+        :return: pd.DataFrame, index = [layer_factor], cols= [alpha factor name]
         """
-        data = get_multi_index_data(self._secReturn, 'tiaoCangDate', date, 'secID', sec_ids)
-        data = data.reset_index().drop('tiaoCangDate', axis=1)
-        data = data.set_index('secID')
-        return data
+        ret_low = pd.Series()
+        ret_high = pd.Series()
+        for layer_factor in self._layerFactor:
+            tmp_low, tmp_high = DCAMHelper.calc_rank_ic(layer_factor=layer_factor,
+                                                        alpha_factors=self._alphaFactor,
+                                                        sec_return=self._secReturn,
+                                                        tiaocang_date=self._tiaoCangDate,
+                                                        na_handler=self._na_handler)
 
-    def get_alpha_factor(self, sec_ids, date):
-        """
-        :param sec_ids: list of sec ids
-        :param date: datetime, 调仓日
-        :return: pd.DataFrame, index = sec_ids, col = [alpha factor]
-        给定某一时间, 和股票代码列表, 返回alpha因子列表
-        """
-        ret = pd.DataFrame()
-        for i in range(len(self._alphaFactor)):
-            data = get_multi_index_data(self._alphaFactor[i], 'tiaoCangDate', date, 'secID', sec_ids)
-            data = data.reset_index().drop('tiaoCangDate', axis=1)
-            data = data.set_index('secID')
-            ret = pd.concat([ret, data], axis=1)
-        ret.columns = self._alphaFactorNames
-        return ret
-
-    def calc_rank_ic(self, layer_factor):
-        """
-        :param layer_factor: pd.Series, 分层因子
-        :return: pd.DataFrame, index = tiaoCangDate, col = [alpha factor names]
-        给定分层因子，计算每个调仓日对应的alpha因子IC
-        """
-        low = pd.DataFrame(index=self._tiaoCangDate, columns=[self._alphaFactorNames])
-        high = pd.DataFrame(index=self._tiaoCangDate, columns=[self._alphaFactorNames])
-
-        for j in range(0, len(self._tiaoCangDate) - 1):  # 对时间做循环，得到每个时间点的rankIC
-            date = self._tiaoCangDate[j]
-            next_date = self._tiaoCangDate[j + 1]
-            group_low, group_high = DCAMHelper.seperate_sec_group(layer_factor, date)  # 分组
-            return_low = DCAMHelper.get_sec_return_on_date(self._secReturn, group_low, next_date)
-            return_high = DCAMHelper.get_sec_return_on_date(self._secReturn, group_high, next_date)  # 得到下期收益序列
-            factor_low = self.get_alpha_factor(group_low, date)
-            factor_high = self.get_alpha_factor(group_high, date)  # 得到当期因子序列
-            table_low = pd.concat([return_low, factor_low], axis=1)
-            table_high = pd.concat([return_high, factor_high], axis=1)
-            table_low = factor_na_handler(table_low, self._na_handler)
-            table_high = factor_na_handler(table_high, self._na_handler)
-            for k in self._alphaFactorNames:
-                tmplow, _ = st.spearmanr(table_low['RETURN'], table_low[k])
-                tmphigh, _ = st.spearmanr(table_high['RETURN'], table_high[k])
-                low[k][j] = tmplow
-                high[k][j] = tmphigh
-        low = low.dropna()
-        high = high.dropna()
-        return low, high
+            ret_low[layer_factor.name] = tmp_low
+            ret_high[layer_factor.name] = tmp_high
+        return ret_low, ret_high
 
     def get_analysis(self, layer_factor_name=None, save_file=False):
         """
@@ -171,7 +165,11 @@ class DCAMAnalyzer(object):
             layer_factor = self._layerFactor[0]
         else:
             layer_factor = self._layerFactor[self._layerFactorNames.index(layer_factor_name)]
-        low, high = self.calc_rank_ic(layer_factor)
+        low, high = DCAMHelper.calc_rank_ic(layer_factor=layer_factor,
+                                            alpha_factors=self._alphaFactor,
+                                            sec_return=self._secReturn,
+                                            tiaocang_date=self._tiaoCangDate,
+                                            na_handler=self._na_handler)
         result = pd.DataFrame(columns=self._alphaFactorNames, index=np.arange(12))
         for i in self._alphaFactorNames:
             mean_low = np.array(low[i]).mean()
@@ -241,14 +239,16 @@ class DCAMAnalyzer(object):
 
         tiao_cang_date_range = self._tiaoCangDate[
                                self._tiaoCangDate.index(date) - self._tiaoCangDateWindowSize: self._tiaoCangDate.index(
-                                       date)]
+                                   date)]
 
         for layerFactor in self._layerFactor:
             if self._factorWeightType == FactorWeightType.EqualWeight:
                 ret_low.loc[layerFactor.name] = self._alphaFactorSign
                 ret_high.loc[layerFactor.name] = self._alphaFactorSign
             else:
-                low, high = self.calc_rank_ic(layerFactor)
+                if self._rank_ic is None:
+                    self._rank_ic = self.calc_rank_ic()
+                low, high = self._rank_ic[0][layerFactor.name], self._rank_ic[1][layerFactor.name]
                 low_to_use = low.loc[tiao_cang_date_range]
                 high_to_use = high.loc[tiao_cang_date_range]
                 weight_low = low_to_use.mean(axis=0) / low_to_use.std(axis=0)
@@ -323,12 +323,12 @@ class DCAMAnalyzer(object):
                 low_high = factor_rank_on_layer_factor.index.get_level_values('low_high')
                 # 权重取绝对值
                 weight = abs(alpha_weight_low.loc[layerFactor].values) if low_high == 'low' else abs(
-                        alpha_weight_high.loc[layerFactor].values)
+                    alpha_weight_high.loc[layerFactor].values)
                 # normalize
                 # weight = [i / weight.sum() for i in weight]
                 layer_factor_quantile_to_use = layer_factor_quantile[layerFactor][secID]
                 weighted_rank += np.dot(weight, rank) * abs(
-                        self.calc_layer_factor_distance(layer_factor_quantile_to_use))
+                    self.calc_layer_factor_distance(layer_factor_quantile_to_use))
             ret[secID] = weighted_rank
 
         return ret
