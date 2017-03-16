@@ -3,13 +3,15 @@
 import os
 import unittest
 from datetime import datetime
+
+import pandas as pd
 from pandas.util.testing import assert_series_equal
+
 from pyStratAlpha.analyzer.factor import FactorLoader
-from pyStratAlpha.analyzer.factor.cleanData import get_universe_single_factor
 from pyStratAlpha.enums import DCAMFactorType
 from pyStratAlpha.enums import FactorICSign
-from pyStratAlpha.enums import FactorNormType
 from pyStratAlpha.enums import FactorNAHandler
+from pyStratAlpha.enums import FactorNormType
 
 
 class TestLoadData(unittest.TestCase):
@@ -24,7 +26,9 @@ class TestLoadData(unittest.TestCase):
             'RETURN': {'path': zip_path + '//factors.csv', 'freq': 'm'},  # 收益,月度频率
             'INDUSTRY': {'path': zip_path + '//codeSW.csv', 'freq': 'm'},  # 申万行业分类,月度频率
             'IND_WGT': {'path': zip_path + '//IndustryWeight.csv', 'freq': 'm'},  # 中证500股票池内按照申万一级行业分类统计的行业权重,月度频率
-            'RETS': {'path': zip_path + '//rets.csv', 'freq': ''}
+            'RETS': {'path': zip_path + '//factors.csv', 'freq': ''},
+            'FactorLoader': {'path': zip_path + '//GetFactorDataRets.csv', 'freq': ''},
+            'NormFactorData': {'path': zip_path + '//NormFactorData.csv', 'freq': ''}
         }
 
         factor_norm_dict = {'MV': [FactorNormType.Null, DCAMFactorType.layerFactor, FactorICSign.Null],  # 分层因子
@@ -39,75 +43,95 @@ class TestLoadData(unittest.TestCase):
                             'INDUSTRY': [FactorNormType.Null, DCAMFactorType.industryFactor, FactorICSign.Null]}
 
         factor_loader_params = {'startDate': '2010-01-31',
-                                'endDate': '2011-12-31',
+                                'endDate': '2011-01-31',
                                 'factorNormDict': factor_norm_dict,
                                 'na_handler': FactorNAHandler.Drop}
 
-        self.factor = FactorLoader(start_date=factor_loader_params['startDate'],
-                                   end_date=factor_loader_params['endDate'],
-                                   factor_norm_dict=factor_norm_dict,
-                                   factor_path_dict=factor_path_dict,
-                                   zip_path=zip_path,
-                                   na_handler=factor_loader_params['na_handler'])
+        self.factor_loader = FactorLoader(start_date=factor_loader_params['startDate'],
+                                          end_date=factor_loader_params['endDate'],
+                                          factor_norm_dict=factor_norm_dict,
+                                          factor_path_dict=factor_path_dict,
+                                          zip_path=zip_path,
+                                          na_handler=factor_loader_params['na_handler'])
 
 
         # TODO test other cases when na_handler is not 'Drop'
-        # TODO dont use get_universe_single_factor to be expected values!
 
     def testGetTiaoCangDate(self):
-        calculated = self.factor.get_tiaocang_date()
+        calculated = self.factor_loader.get_tiaocang_date()
         expected = [datetime(2010, 1, 29, 0, 0), datetime(2010, 2, 26, 0, 0), datetime(2010, 3, 31, 0, 0),
                     datetime(2010, 4, 30, 0, 0), datetime(2010, 5, 31, 0, 0), datetime(2010, 6, 30, 0, 0),
                     datetime(2010, 7, 30, 0, 0), datetime(2010, 8, 31, 0, 0), datetime(2010, 9, 30, 0, 0),
-                    datetime(2010, 10, 29, 0, 0), datetime(2010, 11, 30, 0, 0), datetime(2010, 12, 31, 0, 0),
-                    datetime(2011, 1, 31, 0, 0), datetime(2011, 2, 28, 0, 0), datetime(2011, 3, 31, 0, 0),
-                    datetime(2011, 4, 29, 0, 0), datetime(2011, 5, 31, 0, 0), datetime(2011, 6, 30, 0, 0),
-                    datetime(2011, 7, 29, 0, 0), datetime(2011, 8, 31, 0, 0), datetime(2011, 9, 30, 0, 0),
-                    datetime(2011, 10, 31, 0, 0), datetime(2011, 11, 30, 0, 0)]
+                    datetime(2010, 10, 29, 0, 0), datetime(2010, 11, 30, 0, 0), datetime(2010, 12, 31, 0, 0)]
         self.assertEqual(calculated, expected)
 
     def testGetFactorData(self):
-        factors = self.factor.get_factor_data()
+        self.factor_loader._na_handler = FactorNAHandler.Drop
+        factors = self.factor_loader.get_factor_data()
+
+        data_factors = pd.read_csv(self.factor_loader._factorPathDict['RETURN']['path'])
+        index = pd.MultiIndex.from_arrays(
+            [[datetime.strptime(str(date), '%Y%m%d') for date in data_factors['tiaoCangDate']], data_factors['secID']])
+        index.names = ['tiaoCangDate', 'secID']
 
         calculated = list(factors.index.values)
         expected = ['RETURN', 'INDUSTRY', 'BP_LF', 'MV', 'GP2Asset', 'SP_TTM']
         self.assertEqual(calculated, expected)
 
         calculated = factors['RETURN']
-        expected = get_universe_single_factor(self.factor._factorPathDict['RETURN']['path'],
-                                              index_name=['tiaoCangDate', 'secID'], factor_name='RETURN')
-        expected.name = 'RETURN'
+        expected = pd.Series(data_factors['RETURN'].values, index=index, name='RETURN').dropna()
         assert_series_equal(calculated, expected)
 
         calculated = factors['BP_LF']
-        expected = get_universe_single_factor(self.factor._factorPathDict['BP_LF']['path'],
-                                              index_name=['tiaoCangDate', 'secID'], factor_name='BP_LF')
-        expected.name = 'BP_LF'
+        expected = pd.Series(data_factors['BP_LF'].values, index=index, name='BP_LF').dropna()
         assert_series_equal(calculated, expected)
 
         calculated = factors['MV']
-        expected = get_universe_single_factor(self.factor._factorPathDict['MV']['path'],
-                                              index_name=['tiaoCangDate', 'secID'], factor_name='MV')
-        expected.name = 'MV'
+        expected = pd.Series(data_factors['MV'].values, index=index, name='MV').dropna()
         assert_series_equal(calculated, expected)
 
+        data_factors = pd.read_csv(self.factor_loader._factorPathDict['FactorLoader']['path'])
+        index = pd.MultiIndex.from_arrays(
+            [[datetime.strptime(str(date), '%Y/%m/%d') for date in data_factors['tiaoCangDate'].dropna()],
+             data_factors['secID'].dropna()])
+        index.names = ['tiaoCangDate', 'secID']
 
-    '''
-    def testNormalizeSingleFactorData(self):
-        factors = self.factor.get_factor_data()
+        calculated = factors['GP2Asset']
+        expected = pd.Series(data_factors['GP2Asset'].dropna().values, index=index, name='GP2Asset').dropna()
+        assert_series_equal(calculated, expected)
 
-        calculated = self.factor.normalize_single_factor_data(factors["BP_LF"], industries=factors['INDUSTRY'])
-        expected = get_universe_single_factor(self.factor._factorPathDict['RETS'][0],
-                                              index_name=['tiaoCangDate', 'secID'], factor_name='RET1',
-                                              date_format='%Y/%m/%d')
-        expected.name = 'BP_LF'
-        pd.util.testing.assert_series_equal(calculated, expected)
+        data_factors = pd.read_csv(self.factor_loader._factorPathDict['FactorLoader']['path'])
+        index = pd.MultiIndex.from_arrays(
+            [[datetime.strptime(str(date), '%Y/%m/%d') for date in data_factors['tiaoCangDate2'].dropna()],
+             data_factors['secID2'].dropna()])
+        index.names = ['tiaoCangDate', 'secID']
 
-        calculated = self.factor.normalize_single_factor_data(factors["BP_LF"], industries=factors['INDUSTRY'],
-                                                              caps=factors['MV'])
-        expected = get_universe_single_factor(self.factor._factorPathDict['RETS'][0],
-                                              index_name=['tiaoCangDate', 'secID'], factor_name='RET2',
-                                              date_format='%Y/%m/%d')
-        expected.name = 'BP_LF'
-        pd.util.testing.assert_series_equal(calculated, expected)
-    '''
+        calculated = factors['SP_TTM']
+        expected = pd.Series(data_factors['SP_TTM'].dropna().values, index=index, name='SP_TTM').dropna()
+        assert_series_equal(calculated, expected)
+
+        # 测试不剔除NA值的情况
+        self.factor_loader._na_handler = FactorNAHandler.Ignore
+        factors = self.factor_loader.get_factor_data()
+
+        data_factors = pd.read_csv(self.factor_loader._factorPathDict['FactorLoader']['path'])
+        index = pd.MultiIndex.from_arrays(
+            [[datetime.strptime(str(date), '%Y/%m/%d') for date in data_factors['tiaoCangDate3'].dropna()],
+             data_factors['secID3'].dropna()])
+        index.names = ['tiaoCangDate', 'secID']
+
+        calculated = factors['SP_TTM']
+        expected = pd.Series(data_factors['SP_TTM_NA'].values, index=index, name='SP_TTM')
+        assert_series_equal(calculated, expected)
+
+    def testGetNormFactorData(self):
+        norm_factor = self.factor_loader.get_norm_factor_data()
+
+        calculated = norm_factor['RETURN']
+        data_factors = pd.read_csv(self.factor_loader._factorPathDict['NormFactorData']['path'])
+        index = pd.MultiIndex.from_arrays(
+            [[datetime.strptime(str(date), '%Y/%m/%d') for date in data_factors['tiaoCangDate'].dropna()],
+             data_factors['secID'].dropna()])
+        index.names = ['tiaoCangDate', 'secID']
+        expected = pd.Series(data_factors['RETURN'].dropna().values, index=index, name='RETURN').dropna()
+        assert_series_equal(calculated, expected)
