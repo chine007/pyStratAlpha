@@ -288,7 +288,6 @@ class DCAMAnalyzer(object):
         for layerFactor in self._layerFactor:
             # 分层因子下股票分为两组
             group_low, group_high = DCAMHelper.seperate_sec_group(layerFactor, date)
-            # TODO check why length of factorLow <> group_low
             factor_low = DCAMHelper.get_factor_on_date(self._alphaFactor, group_low, date)
             factor_high = DCAMHelper.get_factor_on_date(self._alphaFactor, group_high, date)
             # 排序的顺序由权重决定
@@ -307,14 +306,14 @@ class DCAMAnalyzer(object):
             # multi index DataFrame
             sec_id_index = np.append(factor_low_rank.index, factor_high_rank.index)
             layer_factor_index = [layerFactor.name] * len(sec_id_index)
-            high_low_index = ['low'] * len(factor_low_rank.index) + ['high'] * len(factor_high_rank.index)
+            high_low_index = ['low'] * len(factor_low_rank) + ['high'] * len(factor_high_rank)
             factor_rank_array = pd.concat([factor_low_rank, factor_high_rank], axis=0).values
             index = pd.MultiIndex.from_arrays([sec_id_index, layer_factor_index, high_low_index],
                                               names=['secID', 'layerFactor', 'low_high'])
             alpha_factor_rank = pd.DataFrame(factor_rank_array, index=index, columns=self._alphaFactorNames)
             # merge
             ret = pd.concat([ret, alpha_factor_rank], axis=0)
-        ret.fillna(ret.median(), inplace=True)
+        ret = factor_na_handler(ret.fillna, self._na_handler)
         return ret
 
     def calc_sec_score_on_date(self, date):

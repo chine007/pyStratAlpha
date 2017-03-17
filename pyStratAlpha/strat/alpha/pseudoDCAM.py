@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 from pprint import pprint
 import pandas as pd
 from PyFin.DateUtilities import Calendar
@@ -16,10 +17,13 @@ from pyStratAlpha.enums import FactorWeightType
 from pyStratAlpha.enums import FreqType
 from pyStratAlpha.enums import FactorNAHandler
 from pyStratAlpha.utils import time_counter
+from pyStratAlpha.utils import pickle_dump_data
+from pyStratAlpha.utils import pickle_load_data
 
-_secSelectedPath = 'sec_selected.csv'
-_secScorePath = 'sec_score.csv'
-_secPricePath = 'priceData.csv'
+_sec_selected_path = 'sec_selected.csv'
+_sec_score_path = 'sec_score.csv'
+_sec_price_path = 'priceData.csv'
+_factor_pkl_path = 'factor.pkl'
 
 
 def load_sec_score(path):
@@ -73,18 +77,15 @@ def dcam_strat_main(factor_loader_params,
     update_sec_score = update_params.get('update_sec_score', False)
     update_sec_select = update_params.get('update_sec_select', False)
 
+    factor = FactorLoader(start_date=start_date,
+                          end_date=end_date,
+                          factor_norm_dict=factor_norm_dict,
+                          na_handler=na_handler)
     if update_factor:
-
-        factor = FactorLoader(start_date=start_date,
-                              end_date=end_date,
-                              factor_norm_dict=factor_norm_dict,
-                              na_handler=na_handler)
         factor_data = factor.get_norm_factor_data()
+        pickle_dump_data(factor_data, _factor_pkl_path)
     else:
-        # TODO
-        factor = None
-        factor_data = None
-        pass
+        factor_data = pickle_load_data(_factor_pkl_path)
 
     if update_sec_score:
         layer_factor = [factor_data[name] for name in factor_norm_dict.keys() if
@@ -104,7 +105,7 @@ def dcam_strat_main(factor_loader_params,
 
         sec_score = analyzer.calc_sec_score()
     else:
-        sec_score = load_sec_score(_secScorePath)
+        sec_score = load_sec_score(_sec_score_path)
 
     if update_sec_select:
         index_comp = IndexComp(industry_weight=factor_data['IND_WGT'])
@@ -121,7 +122,7 @@ def dcam_strat_main(factor_loader_params,
         sec_selected = selector.sec_selected_full_info
         pprint(selector.sec_selected_full_info)
     else:
-        sec_selected = load_sec_selected(_secSelectedPath)
+        sec_selected = load_sec_selected(_sec_selected_path)
 
     # construct strategy ptf
     # 价格数据需要使用到最后一个调仓日的后一个月末
