@@ -3,14 +3,17 @@
 import datetime
 import os as os
 import unittest
-import numpy as np
+
 import pandas as pd
 from pandas.util.testing import assert_frame_equal
 from pandas.util.testing import assert_series_equal
+
 from pyStratAlpha.analyzer.factor import DCAMAnalyzer
 from pyStratAlpha.analyzer.factor import DCAMHelper
 from pyStratAlpha.analyzer.factor.dynamicContext import sigmoid_modif
 from pyStratAlpha.analyzer.factor.loadData import FactorLoader
+from pyStratAlpha.enums import DCAMFactorType
+from pyStratAlpha.enums import FactorICSign
 from pyStratAlpha.enums import FactorNAHandler
 from pyStratAlpha.enums import FactorNormType
 from pyStratAlpha.enums import FactorWeightType
@@ -25,7 +28,7 @@ class TestDynamicContext(unittest.TestCase):
             'BP_LF': {'path': zip_path + '//factors.csv', 'freq': 'm'},  # 最近财报的净资产/总市值, 季度频率 -- 分层因子/alpha测试因子
             'SP_TTM': {'path': zip_path + '//factors.csv', 'freq': 'q'},  # 过去12 个月总营业收入/总市值, 季度频率 -- alpha测试因子
             'EP2_TTM': {'path': zip_path + '//factors.csv', 'freq': 'q'},  # 销售毛利润/总资产, 季度频率 -- alpha测试因子
-            'RETURN': {'path': zip_path + '//factors.csv', 'freq': 'm'}  # 收益,月度频率
+            'RETURN': {'path': zip_path + '//factors.csv', 'freq': 'm'},  # 收益,月度频率}
         }
 
         # TODO
@@ -33,12 +36,17 @@ class TestDynamicContext(unittest.TestCase):
         # 这样最大限度的覆盖所有代码以及所有情况
         # 标准结果保存在csv中, 一个一个拿出来对比即可
         factor_loader = FactorLoader(start_date='2010-04-29',
-                                     end_date='2010-10-28',
-                                     factor_norm_dict={'MV': FactorNormType.Null,
-                                                       'BP_LF': FactorNormType.IndustryAndCapNeutral,
-                                                       'EP2_TTM': FactorNormType.IndustryNeutral,
-                                                       'SP_TTM': FactorNormType.Null,
-                                                       'RETURN': FactorNormType.Null},
+                                     end_date='2010-10-15',
+                                     factor_norm_dict={
+                                         'MV': [FactorNormType.Null, DCAMFactorType.layerFactor, FactorICSign.Null],
+                                         'BP_LF': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.layerFactor,
+                                                   FactorICSign.Null],
+                                         'EP2_TTM': [FactorNormType.IndustryNeutral, DCAMFactorType.alphaFactor,
+                                                     FactorICSign.Positive],
+                                         'SP_TTM': [FactorNormType.Null, DCAMFactorType.alphaFactor,
+                                                    FactorICSign.Positive],
+                                         'RETURN': [FactorNormType.Null, DCAMFactorType.returnFactor,
+                                                    FactorICSign.Null]},
                                      zip_path=zip_path,
                                      factor_path_dict=factor_path
                                      )
@@ -62,7 +70,7 @@ class TestDynamicContext(unittest.TestCase):
                      'layer_factor': layer_factor}
 
     def testGetAnalysis(self):
-        self.analyzer._na_handler = FactorNAHandler.ReplaceWithMean
+        self.analyzer.na_handler = FactorNAHandler.ReplaceWithMean
         calculated = pd.DataFrame(self.analyzer.get_analysis(layer_factor_name='MV').values)
         expected = pd.DataFrame([[-0.06540587, 0.01165126, 0.04339992, 0.101677334486, -1.50705046, 0.11459057,
                                   -1.3940382, 0.21785553, 2.45390347, 0.15586702, 0.6, 0.20898483],
@@ -72,7 +80,7 @@ class TestDynamicContext(unittest.TestCase):
                                   -0.75262051, 0.47796601, 1.40388233, 0.27007692, 0.4, 0.69740488]])
         assert_frame_equal(calculated, expected)
 
-        self.analyzer._na_handler = FactorNAHandler.Drop
+        self.analyzer.na_handler = FactorNAHandler.Drop
         calculated = pd.DataFrame(self.analyzer.get_analysis(layer_factor_name='MV').values)
         expected = pd.DataFrame([[-0.06540587, -0.02045397, 0.04339992, 0.10857475, -1.50705046, -0.18838611,
                                   -0.76888529, 0.47513434, 1.30434481, 0.28644935, 0.6, 0.20898483],
@@ -82,17 +90,20 @@ class TestDynamicContext(unittest.TestCase):
                                   -0.39217292, 0.70559806, 0.40353135, 0.54300921, 0.4, 0.69740488]])
         assert_frame_equal(calculated, expected)
 
-        self.analyzer._na_handler = FactorNAHandler.Ignore
+        self.analyzer.na_handler = FactorNAHandler.Ignore
         calculated = pd.DataFrame(self.analyzer.get_analysis(layer_factor_name='MV').values)
-        expected = pd.DataFrame([[-0.06540587, np.NaN, 0.04339992, np.NaN, -1.50705046, np.NaN,
-                                  np.NaN, np.NaN, np.NaN, np.NaN, 0.8, 0.03614619],
-                                 [-0.01935416, np.NaN, 0.08014542, np.NaN, -0.24148801, np.NaN,
-                                  np.NaN, np.NaN, np.NaN, np.NaN, 0.8, 0.03614619],
-                                 [-0.05478599, np.NaN, 0.14913388, np.NaN, -0.36736114, np.NaN,
-                                  np.NaN, np.NaN, np.NaN, np.NaN, 0.8, 0.03614619]])
+        expected = pd.DataFrame([[-6.54058724e-02, 1.68504588e-03, 4.33999219e-02, 1.26133935e-01,
+                                  -1.50705046e+00, 1.33591795e-02, -1.00592408e+00, 3.61205089e-01,
+                                  1.76106525e+00, 2.21115323e-01, 6.00000000e-01, 2.08984831e-01],
+                                 [-1.93541573e-02, -3.17304332e-02, 8.01454167e-02, 5.93249779e-02,
+                                  -2.41488012e-01, -5.34857901e-01, 2.48237229e-01, 8.10725317e-01,
+                                  2.72026321e-01, 6.16103060e-01, 4.00000000e-01, 6.97404878e-01],
+                                 [-5.47859926e-02, -7.43114359e-02, 1.49133881e-01, 1.30693265e-01,
+                                  -3.67361142e-01, -5.68594226e-01, 1.96931444e-01, 8.48875115e-01,
+                                  2.47629961e-01, 6.32136867e-01, 2.00000000e-01, 9.99621706e-01]])
         assert_frame_equal(calculated, expected)
 
-        self.analyzer._na_handler = FactorNAHandler.ReplaceWithMedian
+        self.analyzer.na_handler = FactorNAHandler.ReplaceWithMedian
         calculated = pd.DataFrame(self.analyzer.get_analysis(layer_factor_name='MV').values)
         expected = pd.DataFrame([[-0.06540587, 0.01055843, 0.04339992, 0.10379066, -1.50705046, 0.10172817,
                                   -1.35048696, 0.23110644, 2.22836897, 0.17384458, 0.6, 0.20898483],
@@ -203,12 +214,12 @@ class TestDynamicContext(unittest.TestCase):
         assert_series_equal(calculated[1][0]['SP_TTM'], expected)
 
     def testCalcLayerFactorDistance(self):
-        self.analyzer._factorWeightType = FactorWeightType.EqualWeight
+        self.analyzer.factor_weight_type = FactorWeightType.EqualWeight
         calculated = self.analyzer.calc_layer_factor_distance(0.6)
         expected = 1.0
         self.assertAlmostEqual(calculated, expected, places=6)
 
-        self.analyzer._factorWeightType = FactorWeightType.ICWeight
+        self.analyzer.factor_weight_type = FactorWeightType.ICWeight
         calculated = self.analyzer.calc_layer_factor_distance(0.9)
         expected = 4.820137900379084
         self.assertAlmostEqual(calculated, expected, places=6)

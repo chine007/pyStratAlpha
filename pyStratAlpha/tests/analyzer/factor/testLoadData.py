@@ -22,13 +22,12 @@ class TestLoadData(unittest.TestCase):
             'MV': {'path': zip_path + '//factors.csv', 'freq': 'm'},  # 总市值, 月度频率 -- 分层因子
             'BP_LF': {'path': zip_path + '//factors.csv', 'freq': 'm'},  # 最近财报的净资产/总市值, 季度频率 -- 分层因子/alpha测试因子
             'SP_TTM': {'path': zip_path + '//factors.csv', 'freq': 'q'},  # 过去12 个月总营业收入/总市值, 季度频率 -- alpha测试因子
-            'GP2Asset': {'path': zip_path + '//factors.csv', 'freq': 'q'},  # 销售毛利润/总资产, 季度频率 -- alpha测试因子
+            'EP2_TTM': {'path': zip_path + '//factors.csv', 'freq': 'q'},  # 销售毛利润/总资产, 季度频率 -- alpha测试因子
             'RETURN': {'path': zip_path + '//factors.csv', 'freq': 'm'},  # 收益,月度频率
             'INDUSTRY': {'path': zip_path + '//codeSW.csv', 'freq': 'm'},  # 申万行业分类,月度频率
             'IND_WGT': {'path': zip_path + '//IndustryWeight.csv', 'freq': 'm'},  # 中证500股票池内按照申万一级行业分类统计的行业权重,月度频率
             'RETS': {'path': zip_path + '//factors.csv', 'freq': ''},
-            'FactorLoader': {'path': zip_path + '//GetFactorDataRets.csv', 'freq': ''},
-            'NormFactorData': {'path': zip_path + '//NormFactorData.csv', 'freq': ''}
+            'FactorLoader': {'path': zip_path + '//GetFactorDataRets.csv', 'freq': ''}
         }
 
         factor_norm_dict = {'MV': [FactorNormType.Null, DCAMFactorType.layerFactor, FactorICSign.Null],  # 分层因子
@@ -36,14 +35,14 @@ class TestLoadData(unittest.TestCase):
                                       FactorICSign.Null],  # 分层因子
                             'SP_TTM': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.alphaFactor,
                                        FactorICSign.Positive],  # alpha 因子
-                            'GP2Asset': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.alphaFactor,
-                                         FactorICSign.Negative],  # alpha因子
+                            'EP2_TTM': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.alphaFactor,
+                                        FactorICSign.Negative],  # alpha因子
                             'RETURN': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.returnFactor,
                                        FactorICSign.Null],
                             'INDUSTRY': [FactorNormType.Null, DCAMFactorType.industryFactor, FactorICSign.Null]}
 
-        factor_loader_params = {'startDate': '2010-01-31',
-                                'endDate': '2011-01-31',
+        factor_loader_params = {'startDate': '2010-01-01',
+                                'endDate': '2010-12-31',
                                 'factorNormDict': factor_norm_dict,
                                 'na_handler': FactorNAHandler.Drop}
 
@@ -54,9 +53,6 @@ class TestLoadData(unittest.TestCase):
                                           zip_path=zip_path,
                                           na_handler=factor_loader_params['na_handler'])
 
-
-        # TODO test other cases when na_handler is not 'Drop'
-
     def testGetTiaoCangDate(self):
         calculated = self.factor_loader.get_tiaocang_date()
         expected = [datetime(2010, 1, 29, 0, 0), datetime(2010, 2, 26, 0, 0), datetime(2010, 3, 31, 0, 0),
@@ -66,7 +62,7 @@ class TestLoadData(unittest.TestCase):
         self.assertEqual(calculated, expected)
 
     def testGetFactorData(self):
-        self.factor_loader._na_handler = FactorNAHandler.Drop
+        self.factor_loader.na_handler = FactorNAHandler.Drop
         factors = self.factor_loader.get_factor_data()
 
         data_factors = pd.read_csv(self.factor_loader._factorPathDict['RETURN']['path'])
@@ -75,7 +71,7 @@ class TestLoadData(unittest.TestCase):
         index.names = ['tiaoCangDate', 'secID']
 
         calculated = list(factors.index.values)
-        expected = ['RETURN', 'INDUSTRY', 'BP_LF', 'MV', 'GP2Asset', 'SP_TTM']
+        expected = ['RETURN', 'INDUSTRY', 'BP_LF', 'MV', 'EP2_TTM', 'SP_TTM']
         self.assertEqual(calculated, expected)
 
         calculated = factors['RETURN']
@@ -96,8 +92,8 @@ class TestLoadData(unittest.TestCase):
              data_factors['secID'].dropna()])
         index.names = ['tiaoCangDate', 'secID']
 
-        calculated = factors['GP2Asset']
-        expected = pd.Series(data_factors['GP2Asset'].dropna().values, index=index, name='GP2Asset').dropna()
+        calculated = factors['EP2_TTM']
+        expected = pd.Series(data_factors['EP2_TTM'].dropna().values, index=index, name='EP2_TTM').dropna()
         assert_series_equal(calculated, expected)
 
         data_factors = pd.read_csv(self.factor_loader._factorPathDict['FactorLoader']['path'])
@@ -111,7 +107,7 @@ class TestLoadData(unittest.TestCase):
         assert_series_equal(calculated, expected)
 
         # 测试不剔除NA值的情况
-        self.factor_loader._na_handler = FactorNAHandler.Ignore
+        self.factor_loader.na_handler = FactorNAHandler.Ignore
         factors = self.factor_loader.get_factor_data()
 
         data_factors = pd.read_csv(self.factor_loader._factorPathDict['FactorLoader']['path'])
@@ -121,17 +117,17 @@ class TestLoadData(unittest.TestCase):
         index.names = ['tiaoCangDate', 'secID']
 
         calculated = factors['SP_TTM']
-        expected = pd.Series(data_factors['SP_TTM_NA'].values, index=index, name='SP_TTM')
+        expected = pd.Series(data_factors['SP_TTM_NA'][:1671].values, index=index, name='SP_TTM')
         assert_series_equal(calculated, expected)
 
     def testGetNormFactorData(self):
         norm_factor = self.factor_loader.get_norm_factor_data()
 
         calculated = norm_factor['RETURN']
-        data_factors = pd.read_csv(self.factor_loader._factorPathDict['NormFactorData']['path'])
+        data_factors = pd.read_csv(self.factor_loader._factorPathDict['FactorLoader']['path'])
         index = pd.MultiIndex.from_arrays(
-            [[datetime.strptime(str(date), '%Y/%m/%d') for date in data_factors['tiaoCangDate'].dropna()],
-             data_factors['secID'].dropna()])
+            [[datetime.strptime(str(date), '%Y/%m/%d') for date in data_factors['tiaoCangDate4'].dropna()],
+             data_factors['secID4'].dropna()])
         index.names = ['tiaoCangDate', 'secID']
         expected = pd.Series(data_factors['RETURN'].dropna().values, index=index, name='RETURN').dropna()
         assert_series_equal(calculated, expected)
