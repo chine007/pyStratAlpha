@@ -5,13 +5,13 @@ from PyFin.DateUtilities import Calendar
 from PyFin.DateUtilities import Date
 from PyFin.api.DateUtilities import bizDatesList
 from matplotlib.pyplot import *
-
 from pyStratAlpha.analyzer.factor import get_multi_index_data
 from pyStratAlpha.analyzer.performance import strat_evaluation
 from pyStratAlpha.enums import DataSource
 from pyStratAlpha.enums import FreqType
 from pyStratAlpha.enums import ReturnType
 from pyStratAlpha.utils import WindMarketDataHandler
+from pyStratAlpha.utils import TSMarketDataHandler
 
 plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
 plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号
@@ -30,7 +30,8 @@ class Portfolio(object):
                  filter_return_on_tiaocang_date=0.09,
                  data_source=DataSource.WIND,
                  benchmark_sec_id='000300.SH',
-                 re_balance_freq=FreqType.EOM):
+                 re_balance_freq=FreqType.EOM,
+                 **kwargs):
         """
         :param sec_selected: pd.DataFrame, multi index = [tiaoCangDate, secID] value=[weight, industry]
         :param end_date: last evaludation date after last tiaoCangDate
@@ -41,24 +42,31 @@ class Portfolio(object):
         :param benchmark_sec_id: str, benchmakr sec id used to compute alpha return
         :return:
         """
-        self._secSelected = sec_selected
-        self._initialCapital = initial_capital
-        self._tiaoCangDate = sorted(set(self._secSelected.index.get_level_values('tiaoCangDate')))
-        self._tiaoCangDate.append(end_date)
-        self._tiaoCangDate = pd.to_datetime(self._tiaoCangDate)
-        self._filterReturnOnTiaoCangDate = filter_return_on_tiaocang_date
-        self._dataSource = data_source
-        self._benchmarkSecID = benchmark_sec_id
-        self._rebalanceFreq = re_balance_freq
+        self._sec_selected = sec_selected
+        self._initial_capital = initial_capital
+        self._tiaocang_date = sorted(set(self._sec_selected.index.get_level_values('tiaoCangDate')))
+        self._tiaocang_date.append(end_date)
+        self._tiaocang_date = pd.to_datetime(self._tiaocang_date)
+        self._filter_return_on_tiaocang_date = filter_return_on_tiaocang_date
+        self._data_source = data_source
+        self._benchmark_sec_id = benchmark_sec_id
+        self._re_balance_freq = re_balance_freq
+        self._csv_path = kwargs.get('csv_path', None)
 
     def _get_sec_price_between_tiaocang_date(self, tiaocang_start_date, tiaocang_end_date):
-        tiaocang_data = get_multi_index_data(self._secSelected, 'tiaoCangDate', tiaocang_start_date)
+        tiaocang_data = get_multi_index_data(self._sec_selected, 'tiaoCangDate', tiaocang_start_date)
         sec_ids = tiaocang_data.index.get_level_values('secID').tolist()
         date = bizDatesList('China.SSE', tiaocang_start_date, tiaocang_end_date)
-        if self._dataSource == DataSource.WIND:
+        if self._data_source == DataSource.WIND:
             price_data = WindMarketDataHandler.get_sec_price_on_date(start_date=date[0],
                                                                      end_date=date[-1],
                                                                      sec_ids=sec_ids)
+        elif self._data_source == DataSource.TUSHARE:
+            price_data = TSMarketDataHandler.get_sec_price_on_date(start_date=date[0],
+                                                                   end_date=date[-1],
+                                                                   sec_ids=sec_ids)
+        elif self._data_source == DataSource.CSV:
+            price_data = pd.read_csv(self._csv_path, index_col=0)
         else:
             raise NotImplementedError
         return price_data
@@ -70,7 +78,7 @@ class Portfolio(object):
         return price
 
     def _get_weight_on_date(self, date):
-        weight = get_multi_index_data(self._secSelected, 'tiaoCangDate', date)
+        weight = get_multi_index_data(self._sec_selected, 'tiaoCangDate', date)
         weight = weight.reset_index().set_index('secID')
         weight = weight.drop(['tiaoCangDate'], axis=1)
         filters = self._filter_sec_on_tiaocang_date(date, weight.index.tolist())
@@ -89,10 +97,10 @@ class Portfolio(object):
         price_data.index.name = 'sec_id'
         # 去除涨幅过大可能买不到的
         price_data['returnFilter'] = price_data[tiaocang_date] / price_data[
-            tiaocang_date_prev] > 1 + self._filterReturnOnTiaoCangDate
+            tiaocang_date_prev] > 1 + self._filter_return_on_tiaocang_date
         # 去除有NaN的， 新股
         price_data['ipoFilter'] = pd.isnull(
-            price_data[tiaocang_date] * price_data[tiaocang_date_prev] * price_data[tiaocang_date_prev2])
+                price_data[tiaocang_date] * price_data[tiaocang_date_prev] * price_data[tiaocang_date_prev2])
         # 去除停牌的，此处判断标准就是连续三天收盘价格一样
         price_data['tingpaiFilter'] = ((price_data[tiaocang_date] == price_data[tiaocang_date_prev]) & (
             price_data[tiaocang_date_prev] == price_data[tiaocang_date_prev2]))
@@ -105,7 +113,7 @@ class Portfolio(object):
     def _update_weight_after_filter(self, weight, filters):
         filter_weight = pd.concat([weight, filters], join_axes=[weight.index], axis=1)
         ret = pd.DataFrame()
-        for name, group in filter_weight.groupby(self._secSelected.columns[1]):
+        for name, group in filter_weight.groupby(self._sec_selected.columns[1]):
             group = group.copy()
             total_weight = group['weight'].sum()
             total_sec = group['weight'].count()
@@ -154,10 +162,10 @@ class Portfolio(object):
 
     def calc_ptf_value_curve(self):
         ret = pd.Series()
-        for i in range(len(self._tiaoCangDate) - 1):
-            tiaocang_start_date = self._tiaoCangDate[i]
-            tiaocang_end_date = self._tiaoCangDate[i + 1]
-            init_ptf_value = self._initialCapital if i == 0 else ret.values[-1]
+        for i in range(len(self._tiaocang_date) - 1):
+            tiaocang_start_date = self._tiaocang_date[i]
+            tiaocang_end_date = self._tiaocang_date[i + 1]
+            init_ptf_value = self._initial_capital if i == 0 else ret.values[-1]
             ptf_curve = self._calc_ptf_value_between_tiaocang_date(init_ptf_value, tiaocang_start_date,
                                                                    tiaocang_end_date)
             ret = pd.concat([ret, ptf_curve], axis=0)
@@ -170,14 +178,14 @@ class Portfolio(object):
 
     def evaluate_ptf_return(self):
         strat_return = self.calc_ptf_value_curve()
-        benchmark_return = WindMarketDataHandler.get_sec_return_on_date(sec_ids=[self._benchmarkSecID],
+        benchmark_return = WindMarketDataHandler.get_sec_return_on_date(sec_ids=[self._benchmark_sec_id],
                                                                         start_date=strat_return.index.tolist()[0],
                                                                         end_date=strat_return.index.tolist()[-1],
                                                                         is_cumul=True)
-        benchmark_return = benchmark_return[self._benchmarkSecID]
+        benchmark_return = benchmark_return[self._benchmark_sec_id]
         benchmark_return.index = pd.to_datetime(benchmark_return.index)
         strat_evaluation(return_dict={'stratReturn': [strat_return, ReturnType.Cumul],
                                       'benchmarkReturn': [benchmark_return, ReturnType.Cumul]},
-                         re_balance_freq=self._rebalanceFreq)
+                         re_balance_freq=self._re_balance_freq)
 
         return

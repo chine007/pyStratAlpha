@@ -9,3 +9,4 @@ from enum import unique
 class DataSource(IntEnum):
     CSV = 0
     WIND = 1
+    TUSHARE = 2
