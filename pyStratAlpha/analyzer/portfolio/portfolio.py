@@ -75,6 +75,8 @@ class Portfolio(object):
         weight = weight.drop(['tiaoCangDate'], axis=1)
         filters = self._filter_sec_on_tiaocang_date(date, weight.index.tolist())
         filter_weight = self._update_weight_after_filter(weight, filters)
+        # 处理特殊情况： 某行业股票全部被剔除
+        filter_weight = filter_weight['weight'] / filter_weight['weight'].sum()
         return filter_weight
 
     def _filter_sec_on_tiaocang_date(self, tiaocang_date, sec_id):

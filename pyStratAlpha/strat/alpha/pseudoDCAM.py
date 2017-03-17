@@ -18,7 +18,7 @@ from pyStratAlpha.enums import FactorNAHandler
 from pyStratAlpha.utils import time_counter
 
 _secSelectedPath = 'sec_selected.csv'
-_secScorePath = 'secScore.csv'
+_secScorePath = 'sec_score.csv'
 _secPricePath = 'priceData.csv'
 
 
@@ -79,7 +79,7 @@ def dcam_strat_main(factor_loader_params,
                               end_date=end_date,
                               factor_norm_dict=factor_norm_dict,
                               na_handler=na_handler)
-        factor_data = factor.get_factor_data()
+        factor_data = factor.get_norm_factor_data()
     else:
         # TODO
         factor = None
@@ -169,9 +169,9 @@ if __name__ == "__main__":
                                    'IND_WGT': [FactorNormType.Null, DCAMFactorType.indexWeight, FactorICSign.Null]}
 
     factor_loader_parameters = {'start_date': '2010-06-05',
-                                'end_date': '2012-09-30',
+                                'end_date': '2016-11-30',
                                 'factor_norm_dict': factor_norm_dict_parameters,
-                                'na_handler': FactorNAHandler.ReplaceWithMedian}
+                                'na_handler': FactorNAHandler.Ignore}
 
     analyzer_parameters = {'factor_weight_type': FactorWeightType.ICWeight,
                            'tiaocang_date_window_size': 12}
