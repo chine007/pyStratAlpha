@@ -137,6 +137,22 @@ class DCAMAnalyzer(object):
                         "length of alpha_factor_sign({0}), does not equal to that of alpha factor({1})".format(
                             len(self._alphaFactorSign), len(self._alphaFactor)))
 
+    @property
+    def na_handler(self):
+        return self._na_handler
+
+    @na_handler.setter
+    def na_handler(self, handler):
+        self._na_handler = handler
+
+    @property
+    def factor_weight_type(self):
+        return self._factorWeightType
+
+    @factor_weight_type.setter
+    def factor_weight_type(self, factor_weight_type):
+        self._factorWeightType = factor_weight_type
+
     def calc_rank_ic(self):
         """
         :param

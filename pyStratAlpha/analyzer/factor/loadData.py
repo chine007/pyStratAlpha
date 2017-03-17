@@ -3,11 +3,12 @@
 
 import pandas as pd
 from PyFin.Utilities import pyFinAssert
+
 from pyStratAlpha.analyzer.factor.cleanData import adjust_factor_date
 from pyStratAlpha.analyzer.factor.cleanData import get_universe_single_factor
 from pyStratAlpha.analyzer.factor.norm import normalize_single_factor_data
-from pyStratAlpha.enums import FactorNormType
 from pyStratAlpha.enums import FactorNAHandler
+from pyStratAlpha.enums import FactorNormType
 from pyStratAlpha.utils import get_pos_adj_date
 from pyStratAlpha.utils import unzip_csv_folder
 
@@ -111,6 +112,14 @@ class FactorLoader(object):
         self._na_handler = na_handler
         # 由于因子csv文件较大,所以默认存储为压缩格式的文件, 第一次使用时自动解压缩
         unzip_csv_folder(zip_path)
+
+    @property
+    def na_handler(self):
+        return self._na_handler
+
+    @na_handler.setter
+    def na_handler(self, na_handler):
+        self._na_handler = na_handler
 
     def get_tiaocang_date(self):
         return get_pos_adj_date(self._startDate, self._endDate, freq=self._freq)
