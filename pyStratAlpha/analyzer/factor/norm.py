@@ -4,9 +4,10 @@ import numpy as np
 import pandas as pd
 from PyFin.Utilities import pyFinWarning
 from sklearn.linear_model import LinearRegression
-from pyStratAlpha.enums import FactorNAHandler
+
 from pyStratAlpha.analyzer.factor.cleanData import factor_na_handler
 from pyStratAlpha.analyzer.factor.cleanData import get_multi_index_data
+from pyStratAlpha.enums import FactorNAHandler
 
 
 def winsorize(factors, nb_std_or_quantile=3):
@@ -72,6 +73,7 @@ def neutralize(factors, industries, caps=None, na_handler=FactorNAHandler.Replac
     :param factors: pd.Series, 原始截面因子
     :param industries: pd.Series, value = 行业名称
     :param caps: optional, pd.Series, value = caps value
+    :param na_handler: enum, handler for na values
     :return: 中性化后的因子
     """
     # 通过concat把数据对齐
@@ -92,6 +94,7 @@ def neutralize(factors, industries, caps=None, na_handler=FactorNAHandler.Replac
     # 把没有市值的设置成均值
     if lcap is not None:
         lcap = factor_na_handler(lcap, na_handler)
+    factors = factor_na_handler(factors, na_handler)
 
     linreg = LinearRegression(fit_intercept=False)
     y = factors
