@@ -3,6 +3,7 @@
 # ref https://uqer.io/community/share/57ff3f9e228e5b3658fac3ed
 
 from math import e
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -10,10 +11,11 @@ import scipy.stats as st
 from PyFin.DateUtilities import Date
 from PyFin.Utilities import pyFinAssert
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter
-from pyStratAlpha.analyzer.factor.cleanData import get_multi_index_data
+
 from pyStratAlpha.analyzer.factor.cleanData import factor_na_handler
-from pyStratAlpha.enums import FactorWeightType
+from pyStratAlpha.analyzer.factor.cleanData import get_multi_index_data
 from pyStratAlpha.enums import FactorNAHandler
+from pyStratAlpha.enums import FactorWeightType
 
 
 class DCAMHelper(object):
@@ -81,8 +83,8 @@ class DCAMHelper(object):
         给定分层因子，计算每个调仓日对应的alpha因子IC
         """
         alpha_factor_names = [alpha_factor.name for alpha_factor in alpha_factors]
-        low = pd.DataFrame(index=tiaocang_date, columns=alpha_factor_names)
-        high = pd.DataFrame(index=tiaocang_date, columns=alpha_factor_names)
+        low = pd.DataFrame(index=tiaocang_date[:-1], columns=alpha_factor_names)
+        high = pd.DataFrame(index=tiaocang_date[:-1], columns=alpha_factor_names)
 
         for j in range(0, len(tiaocang_date) - 1):  # 对时间做循环，得到每个时间点的rankIC
             date = tiaocang_date[j]
