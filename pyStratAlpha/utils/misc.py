@@ -2,10 +2,14 @@
 
 import datetime as dt
 import pickle
-
 import pandas as pd
 from PyFin.Utilities import pyFinAssert
 from matplotlib import font_manager
+from pyStratAlpha.utils.tsMarketDataHandler import TSMarketDataHandler
+from pyStratAlpha.utils.windMarketDataHandler import WindMarketDataHandler
+from pyStratAlpha.enums import DataSource
+from pyStratAlpha.enums import FreqType
+from pyStratAlpha.enums import DfReturnType
 
 
 def top(df, column=None, n=5):
@@ -96,3 +100,35 @@ def time_counter(func):
         return ret
 
     return wrapper
+
+
+def get_sec_price(start_date, end_date, sec_ids, data_source, freq=FreqType.EOD, field=['close'],
+                  return_type=DfReturnType.DateIndexAndSecIDCol, csv_path=None):
+    """
+    :param start_date: datetime, start date of query date
+    :param end_date: datetime, end date of query date
+    :param sec_ids: list of str, sec ids
+    :param data_source: enum, source of data
+    :param csv_path: str, path of csv file if data_source = csv
+    :return: pd.DataFrame
+    """
+    if data_source == DataSource.WIND:
+        price_data = WindMarketDataHandler.get_sec_price_on_date(start_date=start_date,
+                                                                 end_date=end_date,
+                                                                 sec_ids=sec_ids,
+                                                                 freq=freq,
+                                                                 field=field,
+                                                                 return_type=return_type)
+    elif data_source == DataSource.TUSHARE:
+        price_data = TSMarketDataHandler.get_sec_price_on_date(start_date=start_date,
+                                                               end_date=end_date,
+                                                               sec_ids=sec_ids,
+                                                               freq=freq,
+                                                               field=field,
+                                                               return_type=return_type)
+    elif data_source == DataSource.CSV:
+        price_data = pd.read_csv(csv_path, index_col=0)
+    else:
+        raise NotImplementedError
+
+    return price_data

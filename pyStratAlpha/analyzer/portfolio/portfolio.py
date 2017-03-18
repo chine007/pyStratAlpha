@@ -11,7 +11,7 @@ from pyStratAlpha.enums import DataSource
 from pyStratAlpha.enums import FreqType
 from pyStratAlpha.enums import ReturnType
 from pyStratAlpha.utils import WindMarketDataHandler
-from pyStratAlpha.utils import TSMarketDataHandler
+from pyStratAlpha.utils import get_sec_price
 
 plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
 plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号
@@ -57,18 +57,10 @@ class Portfolio(object):
         tiaocang_data = get_multi_index_data(self._sec_selected, 'tiaoCangDate', tiaocang_start_date)
         sec_ids = tiaocang_data.index.get_level_values('secID').tolist()
         date = bizDatesList('China.SSE', tiaocang_start_date, tiaocang_end_date)
-        if self._data_source == DataSource.WIND:
-            price_data = WindMarketDataHandler.get_sec_price_on_date(start_date=date[0],
-                                                                     end_date=date[-1],
-                                                                     sec_ids=sec_ids)
-        elif self._data_source == DataSource.TUSHARE:
-            price_data = TSMarketDataHandler.get_sec_price_on_date(start_date=date[0],
-                                                                   end_date=date[-1],
-                                                                   sec_ids=sec_ids)
-        elif self._data_source == DataSource.CSV:
-            price_data = pd.read_csv(self._csv_path, index_col=0)
-        else:
-            raise NotImplementedError
+        price_data = get_sec_price(start_date=date[0],
+                                   end_date=date[-1],
+                                   sec_ids=sec_ids,
+                                   data_source=self._data_source)
         return price_data
 
     @staticmethod

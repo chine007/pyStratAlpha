@@ -9,6 +9,7 @@ from pyStratAlpha.utils.misc import pickle_load_data
 from pyStratAlpha.utils.misc import time_counter
 from pyStratAlpha.utils.misc import time_index_slicer
 from pyStratAlpha.utils.misc import top
+from pyStratAlpha.utils.misc import get_sec_price
 from pyStratAlpha.utils.symbol import data_yes_convert_to_wind
 from pyStratAlpha.utils.symbol import remove_suffix
 from pyStratAlpha.utils.symbol import wind_convert_to_data_yes
