@@ -1,15 +1,16 @@
 # -*- coding: utf-8 -*-
 
 import datetime as dt
-import pickle
+
 import pandas as pd
 from PyFin.Utilities import pyFinAssert
 from matplotlib import font_manager
+
+from pyStratAlpha.enums import DataSource
+from pyStratAlpha.enums import DfReturnType
+from pyStratAlpha.enums import FreqType
 from pyStratAlpha.utils.tsMarketDataHandler import TSMarketDataHandler
 from pyStratAlpha.utils.windMarketDataHandler import WindMarketDataHandler
-from pyStratAlpha.enums import DataSource
-from pyStratAlpha.enums import FreqType
-from pyStratAlpha.enums import DfReturnType
 
 
 def top(df, column=None, n=5):
@@ -64,31 +65,6 @@ def fig_style(ax, legend, x_label, y_label, legend_loc='upper right'):
     return ax
 
 
-def pickle_dump_data(data, pkl_name, protocol=-1):
-    """
-    :param data: any type
-    :param pkl_name: str, *.pkl
-    :param protocol: int, optional, protocol in saving pickle
-    :return:
-    """
-    files = open(pkl_name, 'wb')
-    pickle.dump(data, files, protocol)
-    files.close()
-    return "pickle file {0:s} saved".format(pkl_name)
-
-
-def pickle_load_data(pkl_name):
-    """
-    :param pkl_name: *.pkl
-    :return: data saved in *.pkl
-    """
-
-    files = open(pkl_name, 'rb')
-    data = pickle.load(files)
-    files.close()
-    return data
-
-
 def time_counter(func):
     def wrapper(*args, **kwargs):
         start_time = dt.datetime.now()
@@ -109,6 +85,9 @@ def get_sec_price(start_date, end_date, sec_ids, data_source, freq=FreqType.EOD,
     :param end_date: datetime, end date of query date
     :param sec_ids: list of str, sec ids
     :param data_source: enum, source of data
+    :param freq: FreqType
+    :param field: price type
+    :param return_type: DfReturnType
     :param csv_path: str, path of csv file if data_source = csv
     :return: pd.DataFrame
     """

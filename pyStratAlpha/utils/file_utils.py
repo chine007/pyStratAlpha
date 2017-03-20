@@ -2,6 +2,7 @@
 
 
 import os
+import pickle
 import zipfile
 
 
@@ -30,3 +31,28 @@ def unzip_csv_folder(zip_path, file_name='data.zip'):
                 outfile.write(zip_file.read(name))
                 outfile.close()
     return
+
+
+def pickle_dump_data(data, pkl_name, protocol=-1):
+    """
+    :param data: any type
+    :param pkl_name: str, *.pkl
+    :param protocol: int, optional, protocol in saving pickle
+    :return:
+    """
+    files = open(pkl_name, 'wb')
+    pickle.dump(data, files, protocol)
+    files.close()
+    return "pickle file {0:s} saved".format(pkl_name)
+
+
+def pickle_load_data(pkl_name):
+    """
+    :param pkl_name: *.pkl
+    :return: data saved in *.pkl
+    """
+
+    files = open(pkl_name, 'rb')
+    data = pickle.load(files)
+    files.close()
+    return data

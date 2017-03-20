@@ -3,8 +3,8 @@
 import pandas as pd
 import tushare as ts
 
-from pyStratAlpha.utils.misc import pickle_dump_data
-from pyStratAlpha.utils.misc import pickle_load_data
+from pyStratAlpha.utils.file_utils import pickle_dump_data
+from pyStratAlpha.utils.file_utils import pickle_load_data
 
 _indexUnd = ['50', '100', '300', '500', '800', '1000']
 _indexIncludeKeyWord = [u'指数', u'增强']

@@ -6,22 +6,14 @@
 import pandas as pd
 from PyFin.Utilities import pyFinAssert
 from empyrical import cum_returns
-from enum import IntEnum
-from enum import unique
 
+from pyStratAlpha.enums import FreqType
 from pyStratAlpha.enums.dfReturn import DfReturnType
 
 try:
     from WindPy import w
 except ImportError:
     pass
-
-
-@unique
-class FreqType(IntEnum):
-    MIN5 = 5
-    HOUR = 60
-    EOD = 0
 
 
 class WindMarketDataHandler(object):
