@@ -3,9 +3,11 @@
 import datetime
 import os as os
 import unittest
+
 import pandas as pd
 from pandas.util.testing import assert_frame_equal
 from pandas.util.testing import assert_series_equal
+
 from pyStratAlpha.analyzer.factor import DCAMAnalyzer
 from pyStratAlpha.analyzer.factor import DCAMHelper
 from pyStratAlpha.analyzer.factor.dynamicContext import sigmoid_modif
@@ -22,11 +24,13 @@ class TestDynamicContext(unittest.TestCase):
         dir_name = os.path.dirname(os.path.abspath(__file__))
         zip_path = os.path.join(dir_name, 'data')
         factor_path = {
-            'MV': {'path': zip_path + '//factors.csv', 'freq': 'm'},  # 总市值, 月度频率 -- 分层因子
-            'BP_LF': {'path': zip_path + '//factors.csv', 'freq': 'm'},  # 最近财报的净资产/总市值, 季度频率 -- 分层因子/alpha测试因子
-            'SP_TTM': {'path': zip_path + '//factors.csv', 'freq': 'q'},  # 过去12 个月总营业收入/总市值, 季度频率 -- alpha测试因子
-            'EP2_TTM': {'path': zip_path + '//factors.csv', 'freq': 'q'},  # 销售毛利润/总资产, 季度频率 -- alpha测试因子
-            'RETURN': {'path': zip_path + '//factors.csv', 'freq': 'm'},  # 收益,月度频率}
+            'MV': {'path': zip_path + '//DCAM_factor_input.csv', 'freq': 'm'},  # 总市值, 月度频率 -- 分层因子
+            'BP_LF': {'path': zip_path + '//DCAM_factor_input.csv', 'freq': 'm'},
+            # 最近财报的净资产/总市值, 季度频率 -- 分层因子/alpha测试因子
+            'SP_TTM': {'path': zip_path + '//DCAM_factor_input.csv', 'freq': 'q'},
+            # 过去12 个月总营业收入/总市值, 季度频率 -- alpha测试因子
+            'EP2_TTM': {'path': zip_path + '//DCAM_factor_input.csv', 'freq': 'q'},  # 销售毛利润/总资产, 季度频率 -- alpha测试因子
+            'RETURN': {'path': zip_path + '//DCAM_factor_input.csv', 'freq': 'm'},  # 收益,月度频率}
         }
 
         factor_loader = FactorLoader(start_date='2010-04-29',
@@ -49,9 +53,9 @@ class TestDynamicContext(unittest.TestCase):
         layer_factor = [factor_data['MV']]
         alpha_factor = [factor_data['BP_LF'], factor_data['SP_TTM'], factor_data['EP2_TTM']]
 
-        self.calc_rank_ic_result = pd.read_csv(zip_path + '//calcRankIC.csv')
-        self.alpha_weight_result = pd.read_csv(zip_path + '//alphaWeight.csv')
-        self.calc_score_result = pd.read_csv(zip_path + '//calcScoreOnDate.csv')
+        self.calc_rank_ic_result = pd.read_csv(zip_path + '//DCAM_rank_ic_result.csv')
+        self.alpha_weight_result = pd.read_csv(zip_path + '//DCAM_alpha_weight_result.csv')
+        self.calc_score_result = pd.read_csv(zip_path + '//DCAM_calc_score_result.csv')
 
         self.helper = DCAMHelper()
         self.analyzer = DCAMAnalyzer(layer_factor=layer_factor,
@@ -176,12 +180,12 @@ class TestDynamicContext(unittest.TestCase):
                                                              '000767.SZ'],
                                                     date=datetime.datetime(2010, 7, 30))
         expected = pd.DataFrame(
-                data={'BP_LF': [-0.0411, -0.6198, 0.5706, 0.2535, 0.3694],
-                      'SP_TTM': [0.9797, 0.8878, 3.4258, 8.1253, 4.9528],
-                      'EP2_TTM': [-3.842, -5.3132, 4.2582, -2.5911, -9.693]},
-                index=pd.Index(['000007.SZ', '000017.SZ', '000027.SZ', '000737.SZ', '000767.SZ'], name='secID',
-                               dtype='object'),
-                columns=['BP_LF', 'SP_TTM', 'EP2_TTM'])
+            data={'BP_LF': [-0.0411, -0.6198, 0.5706, 0.2535, 0.3694],
+                  'SP_TTM': [0.9797, 0.8878, 3.4258, 8.1253, 4.9528],
+                  'EP2_TTM': [-3.842, -5.3132, 4.2582, -2.5911, -9.693]},
+            index=pd.Index(['000007.SZ', '000017.SZ', '000027.SZ', '000737.SZ', '000767.SZ'], name='secID',
+                           dtype='object'),
+            columns=['BP_LF', 'SP_TTM', 'EP2_TTM'])
         assert_frame_equal(calculated, expected)
 
     def testCalcRankIC(self):
@@ -259,9 +263,9 @@ class TestDynamicContext(unittest.TestCase):
                                                          '000767.SZ'],
                                                         datetime.datetime(2010, 7, 30))
         expected = pd.DataFrame(
-                data=[-0.0411, -0.6198, 0.5706, 0.2535, 0.3694],
-                index=pd.Index(['000007.SZ', '000017.SZ', '000027.SZ', '000737.SZ', '000767.SZ'],
-                               dtype='object', name='secID'), columns=['BP_LF'])
+            data=[-0.0411, -0.6198, 0.5706, 0.2535, 0.3694],
+            index=pd.Index(['000007.SZ', '000017.SZ', '000027.SZ', '000737.SZ', '000767.SZ'],
+                           dtype='object', name='secID'), columns=['BP_LF'])
         assert_frame_equal(calculated, expected)
 
     def testCalcAlphaFactorWeightOnDate(self):
@@ -281,11 +285,11 @@ class TestDynamicContext(unittest.TestCase):
         alpha_weight_low, alpha_weight_high = self.analyzer.calc_alpha_factor_weight_on_date(date)
         calculated = self.analyzer.calc_alpha_factor_rank_on_date(date, alpha_weight_low, alpha_weight_high)
         expected = pd.DataFrame(
-                data={'BP_LF': self.alpha_weight_result['BP_LF'].values,
-                      'SP_TTM': self.alpha_weight_result['SP_TTM'].values,
-                      'EP2_TTM': self.alpha_weight_result['EP2_TTM'].values}, index=pd.MultiIndex.from_arrays(
-                        [self.alpha_weight_result['secID'].values, self.alpha_weight_result['layerFactor'].values,
-                         self.alpha_weight_result['low_high'].values]))
+            data={'BP_LF': self.alpha_weight_result['BP_LF'].values,
+                  'SP_TTM': self.alpha_weight_result['SP_TTM'].values,
+                  'EP2_TTM': self.alpha_weight_result['EP2_TTM'].values}, index=pd.MultiIndex.from_arrays(
+                [self.alpha_weight_result['secID'].values, self.alpha_weight_result['layerFactor'].values,
+                 self.alpha_weight_result['low_high'].values]))
         expected.index.names = ['secID', 'layerFactor', 'low_high']
         expected = expected[['BP_LF', 'SP_TTM', 'EP2_TTM']]
         assert_frame_equal(calculated, expected)
@@ -301,9 +305,9 @@ class TestDynamicContext(unittest.TestCase):
         self.analyzer._tiaoCangDateWindowSize = 3
         calculated = self.analyzer.calc_sec_score()
         index = pd.MultiIndex.from_arrays(
-                [[datetime.datetime.strptime(date, '%Y/%m/%d') for date in
-                  self.calc_score_result['tiaoCangDate'].values],
-                 self.calc_score_result['secID2'].values])
+            [[datetime.datetime.strptime(date, '%Y/%m/%d') for date in
+              self.calc_score_result['tiaoCangDate'].values],
+             self.calc_score_result['secID2'].values])
         index.names = ['tiaoCangDate', 'secID']
         expected = pd.Series(data=self.calc_score_result['score2'].values, index=index, name='score')
         assert_series_equal(calculated, expected)

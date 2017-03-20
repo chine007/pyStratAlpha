@@ -19,15 +19,18 @@ class TestLoadData(unittest.TestCase):
         dir_name = os.path.dirname(os.path.abspath(__file__))
         zip_path = os.path.join(dir_name, 'data')
         factor_path_dict = {
-            'MV': {'path': zip_path + '//factors.csv', 'freq': 'm'},  # 总市值, 月度频率 -- 分层因子
-            'BP_LF': {'path': zip_path + '//factors.csv', 'freq': 'm'},  # 最近财报的净资产/总市值, 季度频率 -- 分层因子/alpha测试因子
-            'SP_TTM': {'path': zip_path + '//factors.csv', 'freq': 'q'},  # 过去12 个月总营业收入/总市值, 季度频率 -- alpha测试因子
-            'EP2_TTM': {'path': zip_path + '//factors.csv', 'freq': 'q'},  # 销售毛利润/总资产, 季度频率 -- alpha测试因子
-            'RETURN': {'path': zip_path + '//factors.csv', 'freq': 'm'},  # 收益,月度频率
-            'INDUSTRY': {'path': zip_path + '//codeSW.csv', 'freq': 'm'},  # 申万行业分类,月度频率
-            'IND_WGT': {'path': zip_path + '//IndustryWeight.csv', 'freq': 'm'},  # 中证500股票池内按照申万一级行业分类统计的行业权重,月度频率
-            'RETS': {'path': zip_path + '//factors.csv', 'freq': ''},
-            'FactorLoader': {'path': zip_path + '//GetFactorDataRets.csv', 'freq': ''}
+            'MV': {'path': zip_path + '//DCAM_factor_input.csv', 'freq': 'm'},  # 总市值, 月度频率 -- 分层因子
+            'BP_LF': {'path': zip_path + '//DCAM_factor_input.csv', 'freq': 'm'},
+        # 最近财报的净资产/总市值, 季度频率 -- 分层因子/alpha测试因子
+            'SP_TTM': {'path': zip_path + '//DCAM_factor_input.csv', 'freq': 'q'},
+        # 过去12 个月总营业收入/总市值, 季度频率 -- alpha测试因子
+            'EP2_TTM': {'path': zip_path + '//DCAM_factor_input.csv', 'freq': 'q'},  # 销售毛利润/总资产, 季度频率 -- alpha测试因子
+            'RETURN': {'path': zip_path + '//DCAM_factor_input.csv', 'freq': 'm'},  # 收益,月度频率
+            'INDUSTRY': {'path': zip_path + '//DCAM_industry_input.csv', 'freq': 'm'},  # 申万行业分类,月度频率
+            'IND_WGT': {'path': zip_path + '//DCAM_industry_weight_input.csv', 'freq': 'm'},
+        # 中证500股票池内按照申万一级行业分类统计的行业权重,月度频率
+            'RETS': {'path': zip_path + '//DCAM_factor_input.csv', 'freq': ''},
+            'FactorLoader': {'path': zip_path + '//Load_factor_get_factor_result.csv', 'freq': ''}
         }
 
         factor_norm_dict = {'MV': [FactorNormType.Null, DCAMFactorType.layerFactor, FactorICSign.Null],  # 分层因子
