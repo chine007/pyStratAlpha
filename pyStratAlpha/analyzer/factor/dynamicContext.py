@@ -313,7 +313,7 @@ class DCAMAnalyzer(object):
             alpha_factor_rank = pd.DataFrame(factor_rank_array, index=index, columns=self._alphaFactorNames)
             # merge
             ret = pd.concat([ret, alpha_factor_rank], axis=0)
-        ret = factor_na_handler(ret.fillna, self._na_handler)
+        ret = factor_na_handler(ret, self._na_handler)
         return ret
 
     def calc_sec_score_on_date(self, date):

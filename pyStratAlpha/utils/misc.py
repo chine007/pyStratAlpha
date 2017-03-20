@@ -74,7 +74,7 @@ def pickle_dump_data(data, pkl_name, protocol=-1):
     files = open(pkl_name, 'wb')
     pickle.dump(data, files, protocol)
     files.close()
-    return "pickle file {s} saved".format(pkl_name)
+    return "pickle file {0:s} saved".format(pkl_name)
 
 
 def pickle_load_data(pkl_name):
