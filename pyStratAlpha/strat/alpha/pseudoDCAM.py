@@ -72,6 +72,8 @@ def dcam_strat_main(factor_loader_params,
     initial_capital = portfolio_params.get('initial_capital', 1000000000.0)
     filter_return_on_tiaocang_date = portfolio_params.get('filter_return_on_tiaocang_date', 0.09)
     data_source = portfolio_params.get('data_source', DataSource.WIND)
+    save_perf_file = portfolio_params.get('save_perf_file', False)
+    risk_free = portfolio_params.get('risk_free', 0.0)
 
     update_factor = update_params.get('update_factor', False)
     update_sec_score = update_params.get('update_sec_score', False)
@@ -134,7 +136,9 @@ def dcam_strat_main(factor_loader_params,
                          filter_return_on_tiaocang_date=filter_return_on_tiaocang_date,
                          data_source=data_source,
                          benchmark_sec_id=benchmark_sec_id,
-                         re_balance_freq=re_balance_freq)
+                         re_balance_freq=re_balance_freq,
+                         save_perf_file=save_perf_file,
+                         risk_free=risk_free)
     strategy.evaluate_ptf_return()
 
 
@@ -180,7 +184,9 @@ if __name__ == "__main__":
     selector_parameters = {'save_sec_selected': True}
 
     portfolio_parameters = {'benchmark_sec_id': '000905.SH',
-                            're_balance_freq': FreqType.EOM}
+                            're_balance_freq': FreqType.EOM,
+                            'save_perf_file': True,
+                            'risk_free': 0.03/252}
 
     update_parameters = {'update_factor': True,
                          'update_sec_score': True,
