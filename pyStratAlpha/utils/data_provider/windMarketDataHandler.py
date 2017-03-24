@@ -6,7 +6,6 @@
 import pandas as pd
 from PyFin.Utilities import pyFinAssert
 from empyrical import cum_returns
-
 from pyStratAlpha.enums import FreqType
 from pyStratAlpha.enums.dfReturn import DfReturnType
 

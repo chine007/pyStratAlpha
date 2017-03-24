@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from pyStratAlpha.utils.data_provider import TSMarketDataHandler
+from pyStratAlpha.utils.data_provider import WindMarketDataHandler
 from pyStratAlpha.utils.date_utils import get_pos_adj_date
 from pyStratAlpha.utils.date_utils import map_to_biz_day
 from pyStratAlpha.utils.file_utils import pickle_dump_data
@@ -14,8 +16,6 @@ from pyStratAlpha.utils.misc import top
 from pyStratAlpha.utils.symbol import data_yes_convert_to_wind
 from pyStratAlpha.utils.symbol import remove_suffix
 from pyStratAlpha.utils.symbol import wind_convert_to_data_yes
-from pyStratAlpha.utils.tsMarketDataHandler import TSMarketDataHandler
-from pyStratAlpha.utils.windMarketDataHandler import WindMarketDataHandler
 
 __all__ = ['map_to_biz_day',
            'get_pos_adj_date',
