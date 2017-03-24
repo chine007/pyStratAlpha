@@ -52,6 +52,8 @@ class Portfolio(object):
         self._benchmark_sec_id = benchmark_sec_id
         self._re_balance_freq = re_balance_freq
         self._csv_path = kwargs.get('csv_path', None)
+        self._save_perf_file = kwargs.get('save_perf_file', None)
+        self._risk_free = kwargs.get('risk_free', 0.0)
 
     def _get_sec_price_between_tiaocang_date(self, tiaocang_start_date, tiaocang_end_date):
         tiaocang_data = get_multi_index_data(self._sec_selected, 'tiaoCangDate', tiaocang_start_date)
@@ -178,6 +180,8 @@ class Portfolio(object):
         benchmark_return.index = pd.to_datetime(benchmark_return.index)
         strat_evaluation(return_dict={'stratReturn': [strat_return, ReturnType.Cumul],
                                       'benchmarkReturn': [benchmark_return, ReturnType.Cumul]},
-                         re_balance_freq=self._re_balance_freq)
+                         re_balance_freq=self._re_balance_freq,
+                         save_file=self._save_perf_file,
+                         risk_free=self._risk_free)
 
         return

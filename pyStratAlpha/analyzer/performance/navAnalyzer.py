@@ -101,10 +101,11 @@ def ptf_re_balance(return_dict, margin_prop=0.0, re_balance_freq=FreqType.EOM):
     return hedged_ptf_return
 
 
-def print_perf_stat_by_year(ptf_return, ptf_return_type):
+def print_perf_stat_by_year(ptf_return, ptf_return_type, risk_free):
     """
     :param ptf_return: daily cumul/non-cumul returns of ptf
     :param ptf_return_type:
+    :param risk_free: float, optional, risk free rate used in perf stat
     :return: perf_stat by years
     """
     # convert cumul return into daily return
@@ -116,19 +117,22 @@ def print_perf_stat_by_year(ptf_return, ptf_return_type):
 
     perf_stats = pd.Series()
     for name, group in daily_return_by_year:
-        stat, stat_sign = perf_stat(group[group.columns[0]])
+        stat, stat_sign = perf_stat(group[group.columns[0]], risk_free=risk_free)
         stat.name = name.year
         perf_stats = pd.concat([perf_stats, stat], axis=1)
 
     return perf_stats.dropna(axis=1)
 
 
-def perf_stat(strat_return, benchmark_return=None):
+def perf_stat(strat_return, benchmark_return=None, risk_free=0.0):
     stat = pd.Series()
     stat_sign = pd.Series()
 
     for stat_func in _DictSimpleStatFuncs.keys():
-        stat[stat_func.__name__] = stat_func(strat_return)
+        if stat_func.__name__ == 'sharpe_ratio':
+            stat[stat_func.__name__] = stat_func(strat_return, risk_free)
+        else:
+            stat[stat_func.__name__] = stat_func(strat_return)
         stat_sign[stat_func.__name__] = _DictSimpleStatFuncs[stat_func]
 
     if benchmark_return is not None:
@@ -139,9 +143,10 @@ def perf_stat(strat_return, benchmark_return=None):
     return stat, stat_sign
 
 
-def plot_alpha_curve(return_dict):
+def plot_alpha_curve(return_dict, save_file=False):
     """
     :param return_dict: dict, returnName: [returnData, ReturnType]
+    :param save_file: bool, optional, whether to save return data
     :return:
     """
 
@@ -168,31 +173,45 @@ def plot_alpha_curve(return_dict):
               legend_loc='upper left')
     plt.show()
 
+    if save_file:
+        data.to_csv('return_data.csv', date_format='%Y-%m-%d', encoding='gbk')
+
+    return
+
 
 def strat_evaluation(return_dict,
                      re_balance_freq=FreqType.EOM,
                      margin_prop=0.0,
-                     need_plot=True):
+                     need_plot=True,
+                     save_file=False,
+                     risk_free=0.0):
     """
     :param return_dict: dict, returnName: [returnData, ReturnType]
     :param margin_prop:
     :param re_balance_freq: str, optional, rebalance frequncy = daily/monthly/yearly
     :param need_plot: bool, optional, whether to plot the strategy/benchmark/hedged ptf npv
+    :param save_file: bool, optional, whether to save perf stat
+    :param risk_free: float, optional, risk free rate used in evaluation
     :return: print out the perf stat table by years
     """
 
     ptf_return = ptf_re_balance(return_dict=return_dict, margin_prop=margin_prop, re_balance_freq=re_balance_freq)
-    perf_stats = print_perf_stat_by_year(ptf_return, ReturnType.Cumul)
+    perf_stats = print_perf_stat_by_year(ptf_return, ReturnType.Cumul, risk_free)
 
     utils.print_table(perf_stats, name='Performance statistics for hedged portfolio',
                       fmt='{0:.4f}')
 
-    perf_stats_strat = print_perf_stat_by_year(return_dict['stratReturn'][0], return_dict['stratReturn'][1])
+    perf_stats_strat = print_perf_stat_by_year(return_dict['stratReturn'][0], return_dict['stratReturn'][1], risk_free)
     utils.print_table(perf_stats_strat, name='Performance statistics for unhedged portfolio',
                       fmt='{0:.4f}')
 
     ptf_return_dict = {'ptfReturn': [ptf_return, ReturnType.Cumul]}
     return_dict = dict(return_dict, **ptf_return_dict)
     if need_plot:
-        plot_alpha_curve(return_dict=return_dict)
+        plot_alpha_curve(return_dict=return_dict, save_file=save_file)
+
+    if save_file:
+        perf_stats.to_csv('perf_hedged_ptf.csv', date_format='%Y-%m-%d', encoding='gbk')
+        perf_stats_strat.to_csv('perf_unhedged_ptf.csv', date_format='%Y-%m-%d', encoding='gbk')
+
     return

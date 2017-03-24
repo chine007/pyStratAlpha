@@ -1,24 +1,21 @@
 # -*- coding: utf-8 -*-
-# ref: http://tushare.org/trading.html#id3
+# 从wind服务器读取数据的初版，希望完善后能合并入Algo-Trading package中
+# http://image.dajiangzhang.com/djz/download/20140928/WindMatlab.pdf
+# http://image.dajiangzhang.com/djz/download/20140928/WindAPIFAQ.pdf
 
 import pandas as pd
-import tushare as ts
 from PyFin.Utilities import pyFinAssert
 from empyrical import cum_returns
-from enum import IntEnum
-from enum import unique
-
+from pyStratAlpha.enums import FreqType
 from pyStratAlpha.enums.dfReturn import DfReturnType
 
-
-@unique
-class FreqType(IntEnum):
-    MIN5 = 5
-    HOUR = 60
-    EOD = 0
+try:
+    from WindPy import w
+except ImportError:
+    pass
 
 
-class TSMarketDataHandler(object):
+class WindMarketDataHandler(object):
     def __init__(self, sec_ids, start_date, end_date, freq=None, fields=None,
                  return_type=DfReturnType.DateIndexAndSecIDCol):
         self._secID = sec_ids
@@ -36,27 +33,19 @@ class TSMarketDataHandler(object):
         :param end_date: str, end date of the query period
         :param sec_ids: list of str, sec IDs
         :param freq: FreqType
-        :param return_type: DfReturnType
         :param field: str, filed of data to be queried
+        :param return_type: dfReturnType
         :return: pd.DataFrame, index = date, col = sec ID
         """
+        if not w.isconnected():
+            w.start()
 
         pyFinAssert(freq == FreqType.EOD, ValueError, "for the moment the function only accepts freq type = EOD")
         start_date = str(start_date) if not isinstance(start_date, basestring) else start_date
         end_date = str(end_date) if not isinstance(end_date, basestring) else end_date
 
-        ret = pd.DataFrame()
-        for s in sec_ids:
-            rawData = ts.get_h_data(s, start_date, end_date)
-            if return_type == DfReturnType.DateIndexAndSecIDCol:
-                ret = pd.concat([ret, rawData[field]], axis=1)
-            else:
-                raise NotImplementedError
-
-        if return_type == DfReturnType.DateIndexAndSecIDCol:
-            ret.columns = sec_ids
-            ret.index.name = 'tradeDate'
-            ret.sort_index(ascending=True, inplace=True)
+        raw_data = w.wsd(sec_ids, field, start_date, end_date, 'PriceAdj=F', 'Fill=Previous')
+        ret = format_raw_data(raw_data, sec_ids, freq, field, return_type)
 
         return ret
 
@@ -68,12 +57,15 @@ class TSMarketDataHandler(object):
         :param end_date: str, end date of the query period
         :param sec_ids: list of str, sec IDs
         :param field: str, filed of data to be queried
-        :param return_type
         :param freq: FreqType
+        :param return_type
         :param is_cumul: return is cumul or not
         :return: pd.DataFrame, index = date, col = sec ID
         """
-        ret = TSMarketDataHandler.get_sec_price_on_date(start_date, end_date, sec_ids, freq, field, return_type)
+        if not w.isconnected():
+            w.start()
+
+        ret = WindMarketDataHandler.get_sec_price_on_date(start_date, end_date, sec_ids, freq, field, return_type)
         ret = ret.pct_change()
         if is_cumul:
             ret = ret.fillna(0)
@@ -83,10 +75,21 @@ class TSMarketDataHandler(object):
         return ret
 
 
-if __name__ == "__main__":
-    print TSMarketDataHandler.get_sec_price_on_date(start_date='2010-10-10',
-                                                    end_date='2010-11-10',
-                                                    sec_ids=['002022', '000001'])
-    print TSMarketDataHandler.get_sec_return_on_date(start_date='2010-10-10',
-                                                     end_date='2010-11-10',
-                                                     sec_ids=['002022', '000001'])
+def format_raw_data(raw_data, sec_ids, freq, fields, return_type):
+    ret = pd.DataFrame()
+    if len(raw_data.Data) > 0:
+        if return_type == DfReturnType.DateIndexAndSecIDCol:
+            pyFinAssert(len(fields) == 1, ValueError,
+                        "length of query fields must be 1 under DateIndexAndSecIDCol return type")
+            output = {'tradeDate': raw_data.Times}
+            for secID in sec_ids:
+                output[secID] = raw_data.Data[sec_ids.index(secID)]
+            ret = pd.DataFrame(output)
+            if freq == FreqType.EOD:
+                ret['tradeDate'] = ret['tradeDate'].apply(lambda x: x.strftime('%Y-%m-%d'))
+                ret['tradeDate'] = pd.to_datetime(ret['tradeDate'])
+            ret = ret.set_index('tradeDate')
+        else:
+            raise NotImplementedError
+
+    return ret

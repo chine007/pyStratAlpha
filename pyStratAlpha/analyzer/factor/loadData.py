@@ -15,7 +15,7 @@ from pyStratAlpha.utils import unzip_csv_folder
 _factorPathDict = {
     # 总市值, 月度频率 -- 分层因子
     'MV': {'path': '..//..//data//factor//FactorDataMonthly.csv', 'freq': 'm'},
-    # 最近财报的净资产/总市值, 季度频率 -- 分层因子/alpha测试因子
+    # 最近财报的净资产/总市值, 月度频率 -- 分层因子/alpha测试因子
     'BP_LF': {'path': '..//..//data//factor//FactorDataMonthly.csv', 'freq': 'm'},
     # 净资产同比增长率, 季度频率 -- 分层因子
     'EquityGrowth_YOY': {'path': '..//..//data//factor//FactorDataQuarterly.csv', 'freq': 'q'},

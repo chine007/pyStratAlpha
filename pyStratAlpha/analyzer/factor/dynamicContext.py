@@ -382,6 +382,10 @@ def plot_layer_factor_distance():
     """
     :return: 对calcLayerFactorDistance函数绘图
     """
+    import matplotlib as mpl
+    mpl.rcParams['font.sans-serif'] = [u'SimHei']
+    mpl.rcParams['axes.unicode_minus'] = False
+
     x_major_locator = MultipleLocator(0.1)  # 将x主刻度标签设置为 的倍数
     x_major_formatter = FormatStrFormatter('%1.1f')  # 设置x轴标签文本的格式
     y_major_locator = MultipleLocator(1)  # 将y轴主刻度标签设置为 的倍数
@@ -390,8 +394,12 @@ def plot_layer_factor_distance():
     x = np.linspace(0, 1, 100)
     y = [sigmoid_modif(i) for i in x]
     plt.plot(x, y)
-    plt.title('Layer Factor Scoring Function')
-    plt.grid()
+    plt.title(u'分层因子得分函数')
+    plt.xlabel(u'分位数')
+    plt.ylabel(u'得分')
+    plt.grid(True)
+    plt.plot([0, 1], [-5, -5], '--')
+    plt.plot([0, 1], [5, 5], '--')
     ax = plt.gca()
     ax.xaxis.set_major_locator(x_major_locator)
     ax.xaxis.set_major_formatter(x_major_formatter)

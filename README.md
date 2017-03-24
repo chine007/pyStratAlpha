@@ -13,12 +13,12 @@ Alpha Research and Strategies Lib in Python
 ##### 如何使用:
 
 ###### 因子数据的加载
-将本主页的另一个项目pyStratData下的数据文件 
-<pre> pyStratData/AlphaData/data.zip </pre>
-拷贝至本项目如下目录即可 
+将因子数据作为压缩包'data.zip'拷贝至本项目如下目录即可 
 <pre> pyStratAlpha/data/</pre>
+压缩包中需包含三个文件夹'factor','industry'和'return', 三个文件夹中数据的加载方法见
+<pre> pyStratAlpha/analyzer/factor/loadData.py</pre>
 
 ###### 策略模块的运行
 主要在下面文件夹中
 <pre>pyStratAlpha/analyzer/
-pyStratAlpha/strat/</pre>
+pyStratAlpha/strat/alpha</pre>

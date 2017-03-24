@@ -5,12 +5,11 @@ import datetime as dt
 import pandas as pd
 from PyFin.Utilities import pyFinAssert
 from matplotlib import font_manager
-
+from pyStratAlpha.utils import WindMarketDataHandler
 from pyStratAlpha.enums import DataSource
 from pyStratAlpha.enums import DfReturnType
 from pyStratAlpha.enums import FreqType
-from pyStratAlpha.utils.tsMarketDataHandler import TSMarketDataHandler
-from pyStratAlpha.utils.windMarketDataHandler import WindMarketDataHandler
+from pyStratAlpha.utils import TSMarketDataHandler
 
 
 def top(df, column=None, n=5):
