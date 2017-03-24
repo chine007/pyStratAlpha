@@ -5,17 +5,8 @@ import pandas as pd
 import tushare as ts
 from PyFin.Utilities import pyFinAssert
 from empyrical import cum_returns
-from enum import IntEnum
-from enum import unique
-
-from pyStratAlpha.enums.dfReturn import DfReturnType
-
-
-@unique
-class FreqType(IntEnum):
-    MIN5 = 5
-    HOUR = 60
-    EOD = 0
+from pyStratAlpha.enums import DfReturnType
+from pyStratAlpha.enums import FreqType
 
 
 class TSMarketDataHandler(object):
@@ -47,9 +38,9 @@ class TSMarketDataHandler(object):
 
         ret = pd.DataFrame()
         for s in sec_ids:
-            rawData = ts.get_h_data(s, start_date, end_date)
+            raw_data = ts.get_h_data(s, start_date, end_date)
             if return_type == DfReturnType.DateIndexAndSecIDCol:
-                ret = pd.concat([ret, rawData[field]], axis=1)
+                ret = pd.concat([ret, raw_data[field]], axis=1)
             else:
                 raise NotImplementedError
 
