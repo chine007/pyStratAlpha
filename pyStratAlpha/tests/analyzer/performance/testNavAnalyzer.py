@@ -2,9 +2,7 @@
 import os
 import unittest
 from datetime import datetime
-
 import pandas as pd
-
 from pyStratAlpha.analyzer.performance.navAnalyzer import print_perf_stat_by_year
 from pyStratAlpha.analyzer.performance.navAnalyzer import ptf_re_balance
 from pyStratAlpha.analyzer.performance.navAnalyzer import regroup_by_re_balance_freq
