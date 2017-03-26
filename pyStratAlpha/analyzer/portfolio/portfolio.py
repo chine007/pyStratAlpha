@@ -62,7 +62,8 @@ class Portfolio(object):
         price_data = get_sec_price(start_date=date[0],
                                    end_date=date[-1],
                                    sec_ids=sec_ids,
-                                   data_source=self._data_source)
+                                   data_source=self._data_source,
+                                   csv_path=self._csv_path)
         return price_data
 
     @staticmethod

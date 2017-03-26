@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 import os
 import unittest
-from datetime import datetime
-
 import pandas as pd
-
+from datetime import datetime
 from pyStratAlpha.analyzer.factor.cleanData import get_multi_index_data
 from pyStratAlpha.analyzer.portfolio.portfolio import Portfolio
 from pyStratAlpha.enums import DataSource
+from pandas.util.testing import assert_frame_equal
+from pandas.util.testing import assert_series_equal
 
 
 class TestPortfolio(unittest.TestCase):
@@ -33,7 +33,7 @@ class TestPortfolio(unittest.TestCase):
         calculated = self.portfolio._get_sec_price_between_tiaocang_date(datetime(2012, 6, 29),
                                                                          datetime(2012, 7, 31))
         expected = self.score_result
-        pd.util.testing.assert_frame_equal(calculated, expected)
+        assert_frame_equal(calculated, expected)
 
     def testGetSecPriceOnDate(self):
         calculated = self.portfolio._get_sec_price_on_date(self.score_result, '2012/7/4')
@@ -46,7 +46,7 @@ class TestPortfolio(unittest.TestCase):
 
         expected = pd.Series(data=self.filtered['weight2'].values,
                              index=pd.Index(self.filtered['secID2'], name='secID'), name='weight')
-        pd.util.testing.assert_series_equal(calculated, expected)
+        assert_series_equal(calculated, expected)
 
     def testFilterSecOnTiaoCangDate(self):
         sec_id = ['000702.SZ', '600538.SH', '600975.SH', '002143.SZ', '002286.SZ', '002548.SZ', '002477.SZ',
@@ -89,7 +89,7 @@ class TestPortfolio(unittest.TestCase):
 
         expected = pd.Series(data=self.filtered['filtered'].dropna().values,
                              index=self.filtered['sec_id'].dropna(), dtype='int32', name='filters')
-        pd.util.testing.assert_series_equal(calculated, expected)
+        assert_series_equal(calculated, expected)
 
     def testUpdateWeightAfterFilter(self):
         filtered = pd.Series(data=self.filtered['filtered'].dropna().values,
@@ -103,7 +103,7 @@ class TestPortfolio(unittest.TestCase):
         expected = self.filtered[['weight', 'INDUSTRY', 'filters', 'secID']].set_index('secID')
         expected['weight'] = expected['weight'].astype('float64')
         expected['filters'] = expected['filters'].astype('int32')
-        pd.util.testing.assert_frame_equal(calculated, expected)
+        assert_frame_equal(calculated, expected)
 
     def testGetQuantity(self):
         init_ptf_value = 10000000
@@ -118,4 +118,4 @@ class TestPortfolio(unittest.TestCase):
 
         expected = pd.Series(data=self.filtered['quantity'].values,
                              index=pd.Index(self.filtered['secID3'].values, name='secID'), name='quantity')
-        pd.util.testing.assert_series_equal(calculated, expected)
+        assert_series_equal(calculated, expected)
