@@ -86,10 +86,13 @@ class Portfolio(object):
         sse_cal = Calendar('China.SSE')
         tiaocang_date_prev = sse_cal.advanceDate(Date.strptime(str(tiaocang_date)[:10]), '-1b').toDateTime()
         tiaocang_date_prev2 = sse_cal.advanceDate(Date.strptime(str(tiaocang_date)[:10]), '-2b').toDateTime()
-        price_data = WindMarketDataHandler.get_sec_price_on_date(start_date=tiaocang_date_prev2, end_date=tiaocang_date,
-                                                                 sec_ids=sec_id)
+        price_data = get_sec_price(start_date=tiaocang_date_prev2,
+                                   end_date=tiaocang_date,
+                                   sec_ids=sec_id,
+                                   data_source=self._data_source,
+                                   csv_path=self._csv_path)
         price_data = price_data.transpose()
-        price_data.index.name = 'sec_id'
+        price_data.index.name = 'secID'
         # 去除涨幅过大可能买不到的
         price_data['returnFilter'] = price_data[tiaocang_date] / price_data[
             tiaocang_date_prev] > 1 + self._filter_return_on_tiaocang_date

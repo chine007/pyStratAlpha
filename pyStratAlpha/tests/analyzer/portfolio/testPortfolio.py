@@ -14,38 +14,52 @@ class TestPortfolio(unittest.TestCase):
     def setUp(self):
         dir_name = os.path.dirname(os.path.abspath(__file__))
         input_path = os.path.join(dir_name, 'data//portfolio_input.csv')
-        result_path = os.path.join(dir_name, 'data//portfolio_result.csv')
+        price_data_path = os.path.join(dir_name, 'data//price_data.csv')
         filtered_path = os.path.join(dir_name, 'data//filtered_result.csv')
         sec_data = pd.read_csv(input_path)
-        sec_selected = sec_data[['weight', 'INDUSTRY', 'score']].dropna()
-        sec_selected.index = pd.MultiIndex.from_arrays(
-            [pd.to_datetime(sec_data['tiaoCangDate']).values, sec_data['secID'].values],
-            names=['tiaoCangDate', 'secID'])
+        sec_selected = sec_data.set_index(['tiaoCangDate', 'secID'])
 
-        self.portfolio = Portfolio(sec_selected=sec_selected, end_date='2012-11-30', data_source=DataSource.CSV,
-                                   csv_path=result_path)
+        self.portfolio = Portfolio(sec_selected=sec_selected,
+                                   end_date='2012/11/30',
+                                   data_source=DataSource.CSV,
+                                   csv_path=price_data_path)
 
-        self.score_result = pd.read_csv(result_path).set_index('tradeDate')
+        price_data = pd.read_csv(price_data_path)
+        price_data['tradeDate'] = pd.to_datetime(price_data['tradeDate'])
+        price_data.set_index('tradeDate', inplace=True)
+        self.price_data = price_data
 
         self.filtered = pd.read_csv(filtered_path)
+
+        def get_filtered_result(col_sec_id, col_weight):
+            ret = self.filtered.set_index(col_sec_id)
+            ret = ret[col_weight]
+            ret.name = 'weight'
+            ret.index.name = 'secID'
+            return ret
+
+        self.get_filtered_result = get_filtered_result
 
     def testGetSecPriceBetweenTiaoCangDate(self):
         calculated = self.portfolio._get_sec_price_between_tiaocang_date(datetime(2012, 6, 29),
                                                                          datetime(2012, 7, 31))
-        expected = self.score_result
+        expected = self.price_data[self.price_data.index >= datetime(2012, 6, 29)]
+        expected = expected[expected.index <= datetime(2012, 7, 31)]
         assert_frame_equal(calculated, expected)
 
     def testGetSecPriceOnDate(self):
-        calculated = self.portfolio._get_sec_price_on_date(self.score_result, '2012/7/4')
-        expected = self.score_result.loc['2012/7/4']
+        calculated = self.portfolio._get_sec_price_on_date(self.price_data, datetime(2012, 7, 4))
+        expected = self.price_data.loc[datetime(2012, 7, 4)]
         expected.name = 'price'
-        pd.util.testing.assert_series_equal(calculated, expected)
+        assert_series_equal(calculated, expected)
 
     def testGetWeightOnDate(self):
+        # TODO: 这里会报错,请修正price_data.csv 调仓日会往前3日判断是否当日为停牌, 所以csv文件的数据不应该仅仅提供两个调仓日之间的数据
+        # 请把csv改成两个月的数据,这样包含3个调仓日, 并且最初的调仓日之前也要加若干天数据, 以保住程序能够运行
+        # expected的写法请参照这个修正版, 原来写法太啰嗦
+        # 另外filtered csv col names命名有点混乱, filtered和filters有区别?
         calculated = self.portfolio._get_weight_on_date(datetime(2012, 6, 29))
-
-        expected = pd.Series(data=self.filtered['weight2'].values,
-                             index=pd.Index(self.filtered['secID2'], name='secID'), name='weight')
+        expected = self.get_filtered_result('secID2', 'weight2')
         assert_series_equal(calculated, expected)
 
     def testFilterSecOnTiaoCangDate(self):
@@ -88,12 +102,12 @@ class TestPortfolio(unittest.TestCase):
         calculated = self.portfolio._filter_sec_on_tiaocang_date(datetime(2012, 6, 29), sec_id)
 
         expected = pd.Series(data=self.filtered['filtered'].dropna().values,
-                             index=self.filtered['sec_id'].dropna(), dtype='int32', name='filters')
+                             index=self.filtered['secID'].dropna(), name='filters')
         assert_series_equal(calculated, expected)
 
     def testUpdateWeightAfterFilter(self):
         filtered = pd.Series(data=self.filtered['filtered'].dropna().values,
-                             index=self.filtered['sec_id'].dropna(), dtype='int32', name='filters')
+                             index=self.filtered['secID'].dropna(), name='filters')
         weight = get_multi_index_data(self.portfolio._sec_selected, 'tiaoCangDate', datetime(2012, 6, 29), 'secID',
                                       filtered.index.values)
         weight = weight.reset_index().set_index('secID')
