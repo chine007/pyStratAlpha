@@ -2,9 +2,11 @@
 import os
 import unittest
 from datetime import datetime
+import numpy as np
 import pandas as pd
-from pandas.util.testing import assert_series_equal
 from pandas.util.testing import assert_frame_equal
+from pandas.util.testing import assert_series_equal
+from pyStratAlpha.analyzer.performance.navAnalyzer import perf_stat
 from pyStratAlpha.analyzer.performance.navAnalyzer import print_perf_stat_by_year
 from pyStratAlpha.analyzer.performance.navAnalyzer import ptf_re_balance
 from pyStratAlpha.analyzer.performance.navAnalyzer import regroup_by_re_balance_freq
@@ -83,32 +85,37 @@ class TestNavAnalyzer(unittest.TestCase):
         assert_series_equal(calculated, expected)
 
     def testPrintPerfStatYear(self):
-        #TODO fix this
-        calculated = print_perf_stat_by_year(self.strategy, ReturnType.Cumul)
+        calculated = print_perf_stat_by_year(self.strategy, ReturnType.Cumul, risk_free=0.00)
         expected = pd.DataFrame(data=[-0.101456, -0.295517, -0.343317, -0.289605],
                                 index=['annual_return', 'calmar_ratio', 'max_drawdown', 'sharpe_ratio'], columns=[2005])
         assert_frame_equal(calculated, expected)
 
-        calculated = print_perf_stat_by_year(self.strategy, ReturnType.NonCumul)
+        calculated = print_perf_stat_by_year(self.strategy, ReturnType.Cumul, risk_free=0.02)
+        expected = pd.DataFrame(data=[-0.10145577, -0.29551673, -0.34331652, -19.94066624],
+                                index=['annual_return', 'calmar_ratio', 'max_drawdown', 'sharpe_ratio'], columns=[2005])
+        assert_frame_equal(calculated, expected)
+
+        calculated = print_perf_stat_by_year(self.strategy, ReturnType.NonCumul, risk_free=0.00)
         expected = pd.DataFrame(columns=pd.Int64Index([], dtype='int64'),
                                 index=['annual_return', 'calmar_ratio', 'max_drawdown', 'sharpe_ratio'])
         assert_frame_equal(calculated, expected)
 
-        # def testPerfStat(self):
-        #     calculatedStat, calculatedStatSign = perf_stat(self.strategy_series, self.benchmark_data_frame)
-        #     expectedStat = pd.Series(data=[0.0, np.nan, float('inf'), 172.035958078, 0.0, 1.40921636381, -96911.555468],
-        #                              index=['max_drawdown', 'calmar_ratio', 'annual_return', 'sharpe_ratio',
-        #                                     'information_ratio', 'beta', 'alpha'])
-        #     expectedStatSign = pd.Series(data=[-1, 1, 1, 1, 1, 1, 1],
-        #                                  index=['max_drawdown', 'calmar_ratio', 'annual_return', 'sharpe_ratio',
-        #                                         'information_ratio', 'beta', 'alpha'])
-        #     pd.util.testing.assert_series_equal(calculatedStat, expectedStat)
-        #     pd.util.testing.assert_series_equal(calculatedStatSign, expectedStatSign)
-        #
-        #     calculatedStat, calculatedStatSign = perf_stat(self.strategy_series)
-        #     expectedStat = pd.Series(data=[0.0, np.nan, float('inf'), 172.035958078],
-        #                              index=['max_drawdown', 'calmar_ratio', 'annual_return', 'sharpe_ratio'])
-        #     expectedStatSign = pd.Series(data=[-1, 1, 1, 1],
-        #                                  index=['max_drawdown', 'calmar_ratio', 'annual_return', 'sharpe_ratio'])
-        #     pd.util.testing.assert_series_equal(calculatedStat, expectedStat)
-        #     pd.util.testing.assert_series_equal(calculatedStatSign, expectedStatSign)
+    def testPerfStat(self):
+        calculated_stat, calculated_stat_sign = perf_stat(self.strategy, self.benchmark)
+        expected_stat = pd.Series(
+            data=[172.035958078, 0.0, np.NaN, float('inf'), -96911.555468, -0.157454881152, 1.40921636381],
+            index=['sharpe_ratio', 'max_drawdown', 'calmar_ratio', 'annual_return',
+                   'alpha', 'information_ratio', 'beta'])
+        expected_stat_sign = pd.Series(data=[1, -1, 1, 1, 1, 1, 1],
+                                       index=['sharpe_ratio', 'max_drawdown', 'calmar_ratio', 'annual_return',
+                                              'alpha', 'information_ratio', 'beta'])
+        pd.util.testing.assert_series_equal(calculated_stat, expected_stat)
+        pd.util.testing.assert_series_equal(calculated_stat_sign, expected_stat_sign)
+
+        calculated_stat, calculated_stat_sign = perf_stat(self.strategy)
+        expected_stat = pd.Series(data=[172.035958078, 0.0, np.NaN, float('inf')],
+                                  index=['sharpe_ratio', 'max_drawdown', 'calmar_ratio', 'annual_return'])
+        expected_stat_sign = pd.Series(data=[1, -1, 1, 1],
+                                       index=['sharpe_ratio', 'max_drawdown', 'calmar_ratio', 'annual_return'])
+        pd.util.testing.assert_series_equal(calculated_stat, expected_stat)
+        pd.util.testing.assert_series_equal(calculated_stat_sign, expected_stat_sign)
