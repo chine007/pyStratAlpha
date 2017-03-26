@@ -2,7 +2,9 @@
 import os
 import unittest
 from datetime import datetime
+
 import pandas as pd
+
 from pyStratAlpha.analyzer.factor.cleanData import get_multi_index_data
 from pyStratAlpha.analyzer.portfolio.portfolio import Portfolio
 from pyStratAlpha.enums import DataSource
@@ -13,25 +15,19 @@ class TestPortfolio(unittest.TestCase):
         dir_name = os.path.dirname(os.path.abspath(__file__))
         input_path = os.path.join(dir_name, 'data//portfolio_input.csv')
         result_path = os.path.join(dir_name, 'data//portfolio_result.csv')
-        filterd_path = os.path.join(dir_name, 'data//filtered_result.csv')
+        filtered_path = os.path.join(dir_name, 'data//filtered_result.csv')
         sec_data = pd.read_csv(input_path)
-        index = pd.MultiIndex.from_arrays(
-            [[datetime.strptime(date, "%Y-%m-%d") for date in sec_data['tiaoCangDate'].dropna().values],
-             sec_data['secID'].dropna().values],
+        sec_selected = sec_data[['weight', 'INDUSTRY', 'score']].dropna()
+        sec_selected.index = pd.MultiIndex.from_arrays(
+            [pd.to_datetime(sec_data['tiaoCangDate']).values, sec_data['secID'].values],
             names=['tiaoCangDate', 'secID'])
-        sec_selected = pd.DataFrame(
-            data={'score': sec_data['score'].dropna().values, 'weight': sec_data['weight'].dropna().values,
-                  'INDUSTRY': sec_data['INDUSTRY'].dropna().values}, index=index, dtype='float64')
-        sec_selected = sec_selected[['weight', 'INDUSTRY', 'score']]
+
         self.portfolio = Portfolio(sec_selected=sec_selected, end_date='2012-11-30', data_source=DataSource.CSV,
                                    csv_path=result_path)
 
-        secore_result = pd.read_csv(result_path)
-        self.score_result = pd.DataFrame(data=secore_result[range(1, len(secore_result.columns))].values,
-                                         index=secore_result['tradeDate'],
-                                         columns=secore_result[range(1, len(secore_result.columns))].columns)
+        self.score_result = pd.read_csv(result_path).set_index('tradeDate')
 
-        self.filtered = pd.read_csv(filterd_path)
+        self.filtered = pd.read_csv(filtered_path)
 
     def testGetSecPriceBetweenTiaoCangDate(self):
         calculated = self.portfolio._get_sec_price_between_tiaocang_date(datetime(2012, 6, 29),
@@ -49,8 +45,7 @@ class TestPortfolio(unittest.TestCase):
         calculated = self.portfolio._get_weight_on_date(datetime(2012, 6, 29))
 
         expected = pd.Series(data=self.filtered['weight2'].values,
-                             index=self.filtered['secID2'], name='weight')
-        expected.index.name = 'secID'
+                             index=pd.Index(self.filtered['secID2'], name='secID'), name='weight')
         pd.util.testing.assert_series_equal(calculated, expected)
 
     def testFilterSecOnTiaoCangDate(self):
@@ -97,35 +92,30 @@ class TestPortfolio(unittest.TestCase):
         pd.util.testing.assert_series_equal(calculated, expected)
 
     def testUpdateWeightAfterFilter(self):
-        filter = pd.Series(data=self.filtered['filtered'].dropna().values,
-                           index=self.filtered['sec_id'].dropna(), dtype='int32', name='filters')
+        filtered = pd.Series(data=self.filtered['filtered'].dropna().values,
+                             index=self.filtered['sec_id'].dropna(), dtype='int32', name='filters')
         weight = get_multi_index_data(self.portfolio._sec_selected, 'tiaoCangDate', datetime(2012, 6, 29), 'secID',
-                                      filter.index.values)
+                                      filtered.index.values)
         weight = weight.reset_index().set_index('secID')
-        weight = weight.drop(['tiaoCangDate', 'score'], axis=1)
         weight = weight[['weight', 'INDUSTRY']]
-        calculated = self.portfolio._update_weight_after_filter(weight, filter)
+        calculated = self.portfolio._update_weight_after_filter(weight, filtered)
 
-        expected = pd.DataFrame(data=self.filtered[['weight', 'INDUSTRY', 'filters']].values,
-                                index=self.filtered['secID'], columns=['weight', 'INDUSTRY', 'filters'])
+        expected = self.filtered[['weight', 'INDUSTRY', 'filters', 'secID']].set_index('secID')
         expected['weight'] = expected['weight'].astype('float64')
         expected['filters'] = expected['filters'].astype('int32')
         pd.util.testing.assert_frame_equal(calculated, expected)
 
     def testGetQuantity(self):
         init_ptf_value = 10000000
-        filter = pd.Series(data=self.filtered['filtered'].dropna().values,
-                           index=self.filtered['sec_id'].dropna(), dtype='int32', name='filters')
+        filtered = self.filtered[['filtered', 'sec_id']].dropna().set_index('sec_id')
         weight = get_multi_index_data(self.portfolio._sec_selected, 'tiaoCangDate', datetime(2012, 6, 29), 'secID',
-                                      filter.index.values)
+                                      filtered.index.values)
         weight = weight.reset_index().set_index('secID')
-        weight = weight.drop(['tiaoCangDate', 'score'], axis=1)
         weight = weight[['weight', 'INDUSTRY']]
         price = self.score_result.loc['2012/7/4']
         price.name = 'price'
         calculated = self.portfolio._get_quantity(init_ptf_value, weight, price)
 
         expected = pd.Series(data=self.filtered['quantity'].values,
-                             index=self.filtered['secID3'], name='quantity')
-        expected.index.name = 'secID'
+                             index=pd.Index(self.filtered['secID3'].values, name='secID'), name='quantity')
         pd.util.testing.assert_series_equal(calculated, expected)
