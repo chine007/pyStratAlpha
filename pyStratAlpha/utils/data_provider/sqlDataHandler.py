@@ -37,7 +37,7 @@ class MYSQLDataHandler(object):
 
         return conn
 
-    def load_factor_data(self, start_date, end_date, sec_ids, field=['close'], freq=FreqType.EOD,
+    def load_factor_data(self, start_date, end_date, sec_ids, field='close', freq=FreqType.EOD,
                          return_type=DfReturnType.DateIndexAndSecIDCol, table_name='sec_close'):
         """
         :param start_date: str, start date of the query period
@@ -50,38 +50,35 @@ class MYSQLDataHandler(object):
         :return: pd.DataFrame, index = date, col = sec ID
         """
         pyFinAssert(freq == FreqType.EOD, ValueError, "for the moment the function only accepts freq type = EOD")
-        sql = 'select tradeDate, secID, {field} where tradeDate >= \'{start_date}\' and tradeDate <= \'{end_date}\' ' \
-              'and secID in ({sec_ids}) order by tradeDate, secID from {table}'.format(field=field[0],
-                                                                                       start_date=start_date,
-                                                                                       end_date=end_date,
-                                                                                       sec_ids=sec_ids,
-                                                                                       table=table_name)
+        sql = 'select tradeDate, secID, {field} from {table} where tradeDate >= \'{start_date}\' and ' \
+              'tradeDate <= \'{end_date}\' '.format(field=field,
+                                                    table=table_name,
+                                                    start_date=start_date,
+                                                    end_date=end_date)
+        if len(sec_ids) > 1:
+            sql += 'and secID in {tp_sec_ids}'.format(tp_sec_ids=tuple(sec_ids))
+        else:
+            sql += 'and secID in (\'{tp_sec_ids}\')'.format(tp_sec_ids=sec_ids[0])
+
         raw_data = pd.read_sql(sql, self._engine)
-        ret = format_raw_data(raw_data, return_type=return_type)
+        ret = format_raw_data(raw_data, freq, field, return_type=return_type)
         return ret
 
 
-def format_raw_data(raw_data, sec_ids, freq, fields, return_type):
-    #TODO correct this function
+def format_raw_data(raw_data, freq, field, return_type):
     ret = pd.DataFrame()
-    if len(raw_data.Data) > 0:
+    if len(raw_data) > 0:
+        if freq == FreqType.EOD:
+            raw_data['tradeDate'] = pd.to_datetime(raw_data['tradeDate'])
         if return_type == DfReturnType.DateIndexAndSecIDCol:
-            pyFinAssert(len(fields) == 1, ValueError,
-                        "length of query fields must be 1 under DateIndexAndSecIDCol return type")
-            output = {'tradeDate': raw_data['tradeDate']}
-            for secID in sec_ids:
-                output[secID] = raw_data.Data[sec_ids.index(secID)]
-            ret = pd.DataFrame(output)
-            if freq == FreqType.EOD:
-                ret['tradeDate'] = ret['tradeDate'].apply(lambda x: x.strftime('%Y-%m-%d'))
-                ret['tradeDate'] = pd.to_datetime(ret['tradeDate'])
-            ret = ret.set_index('tradeDate')
+            ret = raw_data.pivot(index='tradeDate', columns='secID', values=field)
         else:
-            raise NotImplementedError
+            ret = raw_data['tradeDate', 'secID', field]
+            ret = ret.set_index('tradeDate')
 
     return ret
 
 
 if __name__ == "__main__":
     mysql = MYSQLDataHandler()
-    mysql.load_factor_data('2010-01-01', '2010-02-01', ['000001.SZ'])
+    print mysql.load_factor_data('2011-01-01', '2011-02-01', ['000001.SZ'])

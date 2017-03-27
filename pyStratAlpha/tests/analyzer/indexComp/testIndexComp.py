@@ -2,9 +2,8 @@
 import os
 import unittest
 from datetime import datetime
-
 import pandas as pd
-
+from pandas.util.testing import assert_series_equal
 from pyStratAlpha.analyzer.factor.cleanData import get_universe_single_factor
 from pyStratAlpha.analyzer.indexComp.indexComp import IndexComp
 
@@ -45,13 +44,13 @@ class TestIndexComp(unittest.TestCase):
 
         expected = pd.Series([5.44, 5.56, 5.54, 5.31, 5.1, 5.81, 5.409, 5.206, 5.09, 4.971, 5.116, 5.759, 6.48, 6.687],
                              index=index, name='factor')
-        pd.util.testing.assert_series_equal(calculated, expected)
+        assert_series_equal(calculated, expected)
 
         calculated = self.indexComp.get_industry_weight_on_name("电子")
-        pd.util.testing.assert_series_equal(calculated, expected)
+        assert_series_equal(calculated, expected)
 
     def testMapIndustryCodeToName(self):
         industry = pd.Series(['801200.SI', '801090.SI'], index=['300158.SZ', '600328.SH'])
         calculated = self.indexComp.map_industry_code_to_name(industry)
         expected = pd.Series(['商业贸易', '交运设备'], index=['300158.SZ', '600328.SH'])
-        pd.util.testing.assert_series_equal(calculated, expected)
+        assert_series_equal(calculated, expected)

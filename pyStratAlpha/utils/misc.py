@@ -106,6 +106,7 @@ def get_sec_price(start_date, end_date, sec_ids, data_source, freq=FreqType.EOD,
                                                                return_type=return_type)
     elif data_source == DataSource.CSV:
         price_data = pd.read_csv(csv_path, index_col=0)
+        price_data.index = pd.to_datetime(price_data.index)
     else:
         raise NotImplementedError
 

@@ -97,6 +97,7 @@ def ptf_re_balance(return_dict, margin_prop=0.0, re_balance_freq=FreqType.EOM):
         hedged_ptf_return = pd.concat([hedged_ptf_return, hedged_return], axis=0)
 
     hedged_ptf_return.name = 'hedgedPtfReturn'
+    hedged_ptf_return.index.name = return_data.index.name
 
     return hedged_ptf_return
 
