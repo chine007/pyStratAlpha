@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 
 from PyFin.DateUtilities import Calendar
-from alphalens.performance import factor_returns
-from alphalens.performance import mean_return_by_quantile
 from alphalens.utils import get_clean_factor_and_forward_returns
 from pyStratAlpha.analyzer.indexComp import IndexComp
 from pyStratAlpha.enums import DataSource
 from pyStratAlpha.utils import WindMarketDataHandler
 import pandas as pd
-from pyStratAlpha.strat.alpha.pseudoDCAM import load_sec_score
-import numpy as np
 import alphalens
 from PyFin.api.DateUtilities import bizDatesList
+import matplotlib.gridspec as gridspec
+import matplotlib.pyplot as plt
+import pandas as pd
+
 
 _alphaLensFactorIndexName = ['date', 'asset']
 _alphaLensFactorColName = 'factor'
@@ -69,16 +69,10 @@ class FactorAnalyzer(object):
     def create_full_tear_sheet(self):
 
         factor = self._get_clean_factor_and_fwd_return()
-        #factor_return = factor_returns(factor, long_short=True)
-        #mean_quantile, std_qauntile = mean_return_by_quantile(factor,
-                                                              #by_group=False,
-                                                              #demeaned=True)
-
-
-        alphalens.tears.create_turnover_tear_sheet(factor)
-
-        print factor
-        print type(factor)
+        quantile_tear_sheet(factor,1)
+        quantile_tear_sheet(factor,5)
+        quantile_tear_sheet(factor,10)
+        top_bottom_tear_sheet(factor)
 
         return
 
@@ -86,8 +80,7 @@ def load_sec_daily_score(path):
     ret = pd.read_csv(path, encoding='gbk')
     date_set = ret['tiaoCangDate'].drop_duplicates()
     ret_daily = pd.DataFrame()
-    for i in range(0,6,1):
-    #for i in range(0,len(date_set)-1,1):
+    for i in range(0,len(date_set)-1,1):
         date = bizDatesList('China.SSE', date_set.values[i], date_set.values[i+1])
         secID = ret['secID'][date_set.index[i]:date_set.index[i+1]]
         score = ret['score'][date_set.index[i]:date_set.index[i+1]]
@@ -98,6 +91,28 @@ def load_sec_daily_score(path):
     ret_daily  = ret_daily .set_index(['tiaoCangDate', 'secID'])
     ret_daily  = ret_daily ['score']
     return ret_daily
+
+def quantile_tear_sheet(factor_data,p):
+
+    vertical_sections = 1
+    gf = alphalens.tears.GridFigure(rows=vertical_sections, cols=1)
+    mean_ret_quant_daily, std_quant_daily = alphalens.performance.mean_return_by_quantile(factor_data,
+                                                                         by_date=True,
+                                                                         by_group=False,
+                                                                         demeaned=True)
+
+    alphalens.plotting.plot_cumulative_returns_by_quantile(mean_ret_quant_daily[p],
+                                                     period=p,
+                                                     ax=gf.next_row())
+
+def top_bottom_tear_sheet(factor_data):
+    mean_return_by_q_daily, std_err = alphalens.performance.mean_return_by_quantile(factor_data, by_date=True)
+    quant_return_spread, std_err_spread = alphalens.performance.compute_mean_returns_spread(mean_return_by_q_daily,
+                                                                                        upper_quant=5,
+                                                                                        lower_quant=1,
+                                                                                        std_err=std_err)
+    alphalens.plotting.plot_mean_quantile_returns_spread_time_series(quant_return_spread, std_err_spread);
+
 
 
 if __name__ == "__main__":
