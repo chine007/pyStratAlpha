@@ -1,5 +1,9 @@
-## functions in alphalens
-### utils.deman_foward_retrun
+## Note on FactorAnalyzer member functions
+
+> FactorAnalyzer类中大量引用了alphalens的分析函数
+
+### 获取股票分组后的组平均超额收益
+<pre> alphalens/utils.deman_foward_retrun </pre>
 
 必传参数
 factor_data : pd.DataFrame -MultiIndex 
@@ -13,7 +17,8 @@ grouper :  list
 分组后相对所对应的组的平均超额收益。比如工商银行10天的收益为4%，银行行业为3%，则返回1%
 
 
-### utils.get_clean_factor_and_forward_returns
+### 获取股票未来若干天收益
+<pre> alphalens/utils.get_clean_factor_and_forward_returns </pre>
 
 必传参数
 factor : pd.Series - MultiIndex
