@@ -88,19 +88,6 @@ class TestDynamicContext(unittest.TestCase):
                                   -0.39217292, 0.70559806, 0.40353135, 0.54300921, 0.4, 0.69740488]])
         assert_frame_equal(calculated, expected)
 
-        self.analyzer.na_handler = FactorNAHandler.Ignore
-        calculated = pd.DataFrame(self.analyzer.get_analysis(layer_factor_name='MV').values)
-        expected = pd.DataFrame([[-6.54058724e-02, 1.68504588e-03, 4.33999219e-02, 1.26133935e-01,
-                                  -1.50705046e+00, 1.33591795e-02, -1.00592408e+00, 3.61205089e-01,
-                                  1.76106525e+00, 2.21115323e-01, 6.00000000e-01, 2.08984831e-01],
-                                 [-1.93541573e-02, -3.17304332e-02, 8.01454167e-02, 5.93249779e-02,
-                                  -2.41488012e-01, -5.34857901e-01, 2.48237229e-01, 8.10725317e-01,
-                                  2.72026321e-01, 6.16103060e-01, 4.00000000e-01, 6.97404878e-01],
-                                 [-5.47859926e-02, -7.43114359e-02, 1.49133881e-01, 1.30693265e-01,
-                                  -3.67361142e-01, -5.68594226e-01, 1.96931444e-01, 8.48875115e-01,
-                                  2.47629961e-01, 6.32136867e-01, 2.00000000e-01, 9.99621706e-01]])
-        assert_frame_equal(calculated, expected)
-
         self.analyzer.na_handler = FactorNAHandler.ReplaceWithMedian
         calculated = pd.DataFrame(self.analyzer.get_analysis(layer_factor_name='MV').values)
         expected = pd.DataFrame([[-0.06540587, 0.01055843, 0.04339992, 0.10379066, -1.50705046, 0.10172817,
@@ -109,9 +96,6 @@ class TestDynamicContext(unittest.TestCase):
                                   -1.20216613, 0.27174078, 0.95102408, 0.35802091, 0.4, 0.69740488],
                                  [-0.05478599, -0.01243901, 0.14913388, 0.11683083, -0.36736114, -0.10647025,
                                   -0.44705772, 0.66735199, 0.51378898, 0.49389527, 0.4, 0.69740488]])
-        assert_frame_equal(calculated, expected)
-
-        calculated = pd.DataFrame(self.analyzer.get_analysis().values)
         assert_frame_equal(calculated, expected)
 
     def testGetSecGroup(self):

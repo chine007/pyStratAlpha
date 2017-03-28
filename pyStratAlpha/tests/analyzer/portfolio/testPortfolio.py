@@ -84,7 +84,7 @@ class TestPortfolio(unittest.TestCase):
         calculated = self.portfolio._update_weight_after_filter(weight, filtered)
 
         expected = self.filtered[['weight', 'INDUSTRY', 'filters', 'secID4']].set_index('secID4').dropna()
-        expected['weight'] = expected['weight'].astype('float64')
+        expected['weight'] = expected['weight']
         expected.index.name = 'secID'
         assert_frame_equal(calculated, expected)
 
