@@ -5,13 +5,10 @@ from alphalens.utils import get_clean_factor_and_forward_returns
 from pyStratAlpha.analyzer.indexComp import IndexComp
 from pyStratAlpha.enums import DataSource
 from pyStratAlpha.utils import WindMarketDataHandler
-import pandas as pd
 import alphalens
 from PyFin.api.DateUtilities import bizDatesList
-import matplotlib.gridspec as gridspec
-import matplotlib.pyplot as plt
 import pandas as pd
-
+import matplotlib.pyplot as plt
 
 _alphaLensFactorIndexName = ['date', 'asset']
 _alphaLensFactorColName = 'factor'
@@ -24,7 +21,8 @@ class FactorAnalyzer(object):
                  factor,
                  industry,
                  data_source=DataSource.WIND,
-                 calendar='China.SSE'):
+                 calendar='China.SSE',
+                 periods =[1,5,10]):
         """
         :param factor: pd.Series, multi index=[tradeDate, secID]  columns = [factor]
         :param industry: pd.Series/dict, Either A MultiIndex Series indexed by date and asset, containing the period
@@ -35,43 +33,45 @@ class FactorAnalyzer(object):
         :return:
         """
         self._calendar = Calendar(calendar)
-        self._startDate = start_date
-        self._endDate = end_date
+        self._start_date = start_date
+        self._end_date = end_date
         self._factor = factor
         self._industry = industry
-        self._dataSource = data_source
+        self._data_dource = data_source
+        self._periods = periods
 
         self._factor.index = self._factor.index.rename(_alphaLensFactorIndexName)
         self._factor.name = _alphaLensFactorColName
         self._factor = self._factor.loc[
-            self._factor.index.get_level_values(_alphaLensFactorIndexName[0]) >= self._startDate]
+            self._factor.index.get_level_values(_alphaLensFactorIndexName[0]) >= self._start_date]
         self._factor = self._factor.loc[
-            self._factor.index.get_level_values(_alphaLensFactorIndexName[0]) <= self._endDate]
+            self._factor.index.get_level_values(_alphaLensFactorIndexName[0]) <= self._end_date]
 
-        self._tradeDate = sorted(set(self._factor.index.get_level_values(_alphaLensFactorIndexName[0])))
-        self._secID = sorted(set(self._factor.index.get_level_values(_alphaLensFactorIndexName[1]).tolist()))
+        self._trade_date = sorted(set(self._factor.index.get_level_values(_alphaLensFactorIndexName[0])))
+        self._sec_ID = sorted(set(self._factor.index.get_level_values(_alphaLensFactorIndexName[1]).tolist()))
 
 
 
     def _get_price_data(self):
-        if self._dataSource == DataSource.WIND:
-            price_data = WindMarketDataHandler.get_sec_price_on_date(self._tradeDate, self._secID)
+        if self._data_dource == DataSource.WIND:
+            price_data = WindMarketDataHandler.get_sec_price_on_date(self._trade_date, self._sec_ID)
         else:
             raise NotImplementedError
         return price_data
 
     def _get_clean_factor_and_fwd_return(self):
+        price = WindMarketDataHandler.get_sec_price_on_date(self._trade_date[0], self._trade_date[-1], self._sec_ID)
         factor = get_clean_factor_and_forward_returns(factor=self._factor,
-                                                      prices=WindMarketDataHandler.get_sec_price_on_date(self._tradeDate[0],self._tradeDate[-1], self._secID),
-                                                      groupby_labels=IndexComp.get_industry_name_dict())
+                                                      prices=price,
+                                                      groupby_labels=IndexComp.get_industry_name_dict(),
+                                                      periods=self._periods)
         return factor
 
     def create_full_tear_sheet(self):
 
         factor = self._get_clean_factor_and_fwd_return()
-        quantile_tear_sheet(factor,1)
-        quantile_tear_sheet(factor,5)
-        quantile_tear_sheet(factor,10)
+        for p in self._periods:
+            quantile_tear_sheet(factor,p)
         top_bottom_tear_sheet(factor)
 
         return
@@ -93,9 +93,7 @@ def load_sec_daily_score(path):
     return ret_daily
 
 def quantile_tear_sheet(factor_data,p):
-
-    vertical_sections = 1
-    gf = alphalens.tears.GridFigure(rows=vertical_sections, cols=1)
+    gf = alphalens.tears.GridFigure(rows=1, cols=1)
     mean_ret_quant_daily, std_quant_daily = alphalens.performance.mean_return_by_quantile(factor_data,
                                                                          by_date=True,
                                                                          by_group=False,
@@ -117,6 +115,5 @@ def top_bottom_tear_sheet(factor_data):
 
 if __name__ == "__main__":
     factor = load_sec_daily_score('sec_score.csv')
-    print factor
     fa = FactorAnalyzer('2010-01-01','2016-08-01',factor,None)
     fa.create_full_tear_sheet()
