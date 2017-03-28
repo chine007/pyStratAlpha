@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from pyStratAlpha.utils.data_provider import TSMarketDataHandler
-from pyStratAlpha.utils.data_provider import WindMarketDataHandler
+from pyStratAlpha.utils import data_provider
 from pyStratAlpha.utils.date_utils import get_pos_adj_date
 from pyStratAlpha.utils.date_utils import map_to_biz_day
 from pyStratAlpha.utils.file_utils import pickle_dump_data
@@ -27,8 +26,6 @@ __all__ = ['map_to_biz_day',
            'time_counter',
            'wind_convert_to_data_yes',
            'data_yes_convert_to_wind',
-           'WindMarketDataHandler',
-           'TSMarketDataHandler',
            'unzip_csv_folder',
            'pickle_dump_data',
            'pickle_load_data',

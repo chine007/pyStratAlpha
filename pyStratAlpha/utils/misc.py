@@ -5,11 +5,12 @@ import datetime as dt
 import pandas as pd
 from PyFin.Utilities import pyFinAssert
 from matplotlib import font_manager
-from pyStratAlpha.utils import WindMarketDataHandler
+from pyStratAlpha.utils.data_provider import WindMarketDataHandler
+from pyStratAlpha.utils.data_provider import TSMarketDataHandler
+from pyStratAlpha.utils.data_provider import MYSQLDataHandler
 from pyStratAlpha.enums import DataSource
 from pyStratAlpha.enums import DfReturnType
 from pyStratAlpha.enums import FreqType
-from pyStratAlpha.utils import TSMarketDataHandler
 
 
 def top(df, column=None, n=5):
@@ -107,6 +108,14 @@ def get_sec_price(start_date, end_date, sec_ids, data_source, freq=FreqType.EOD,
     elif data_source == DataSource.CSV:
         price_data = pd.read_csv(csv_path, index_col=0)
         price_data.index = pd.to_datetime(price_data.index)
+    elif data_source == DataSource.MYSQL_LOCAL:
+        data_loader = MYSQLDataHandler()
+        price_data = data_loader.load_factor_data(start_date=start_date,
+                                                  end_date=end_date,
+                                                  sec_ids=sec_ids,
+                                                  freq=freq,
+                                                  field=field,
+                                                  return_type=return_type)
     else:
         raise NotImplementedError
 

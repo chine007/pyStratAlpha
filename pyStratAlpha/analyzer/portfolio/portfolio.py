@@ -10,7 +10,7 @@ from pyStratAlpha.analyzer.performance import strat_evaluation
 from pyStratAlpha.enums import DataSource
 from pyStratAlpha.enums import FreqType
 from pyStratAlpha.enums import ReturnType
-from pyStratAlpha.utils import WindMarketDataHandler
+from pyStratAlpha.utils.data_provider import WindMarketDataHandler
 from pyStratAlpha.utils import get_sec_price
 
 plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
