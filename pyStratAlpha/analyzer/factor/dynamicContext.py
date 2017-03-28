@@ -12,8 +12,16 @@ from PyFin.Utilities import pyFinAssert
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter
 from pyStratAlpha.analyzer.factor.cleanData import factor_na_handler
 from pyStratAlpha.analyzer.factor.cleanData import get_multi_index_data
+from pyStratAlpha.analyzer.factor.loadData import FactorLoader
 from pyStratAlpha.enums import FactorNAHandler
 from pyStratAlpha.enums import FactorWeightType
+from pyStratAlpha.enums import FactorNormType
+from pyStratAlpha.enums import FactorICSign
+from pyStratAlpha.enums import DCAMFactorType
+from pyStratAlpha.utils import pickle_dump_data
+from pyStratAlpha.utils import pickle_load_data
+
+_factor_pkl_path = 'factor.pkl'
 
 
 class DCAMHelper(object):
@@ -171,16 +179,13 @@ class DCAMAnalyzer(object):
             ret_high[layer_factor.name] = tmp_high
         return ret_low, ret_high
 
-    def get_analysis(self, layer_factor_name=None, save_file=False):
+    def get_analysis(self, layer_factor_name, save_file=False):
         """
         :param layer_factor_name str, 分层因子名称
         :param save_file,bool save file or not
         :return:  对给定情景因子分层后的股票组合进行的统计分析
         """
-        if layer_factor_name is None:
-            layer_factor = self._layerFactor[0]
-        else:
-            layer_factor = self._layerFactor[self._layerFactorNames.index(layer_factor_name)]
+        layer_factor = self._layerFactor[self._layerFactorNames.index(layer_factor_name)]
         low, high = DCAMHelper.calc_rank_ic(layer_factor=layer_factor,
                                             alpha_factors=self._alphaFactor,
                                             sec_return=self._secReturn,
@@ -408,5 +413,90 @@ def plot_layer_factor_distance():
     plt.show()
 
 
+def get_analyzer_table(factor_loader_params,
+                       dcam_analyzer_params,
+                       output_layer_factor_name,
+                       update_factor=False):
+    # FactorLoader params
+    start_date = factor_loader_params['start_date']
+    end_date = factor_loader_params['end_date']
+    factor_norm_dict = factor_loader_params['factor_norm_dict']
+    na_handler = factor_loader_params.get('na_handler', FactorNAHandler.Ignore)
+
+    # dcam analyzer params
+    factor_weight_type = dcam_analyzer_params.get('factor_weight_type', FactorWeightType.ICWeight)
+    tiaocang_date_window_size = dcam_analyzer_params.get('tiaocang_date_window_size', 12)
+    save_sec_score = dcam_analyzer_params.get('save_sec_score', True)
+
+    factor = FactorLoader(start_date=start_date,
+                          end_date=end_date,
+                          factor_norm_dict=factor_norm_dict,
+                          na_handler=na_handler)
+
+    if update_factor:
+        factor_data = factor.get_norm_factor_data()
+        pickle_dump_data(factor_data, _factor_pkl_path)
+    else:
+        factor_data = pickle_load_data(_factor_pkl_path)
+
+    layer_factor = [factor_data[name] for name in factor_norm_dict.keys() if
+                    factor_norm_dict[name][1] == DCAMFactorType.layerFactor]
+    alpha_factor = [factor_data[name] for name in factor_norm_dict.keys() if
+                    factor_norm_dict[name][1] == DCAMFactorType.alphaFactor]
+    alpha_factor_sign = [factor_data[name][2] for name in factor_norm_dict.keys() if
+                         factor_norm_dict[name][1] == DCAMFactorType.alphaFactor]
+    analyzer = DCAMAnalyzer(layer_factor=layer_factor,
+                            alpha_factor=alpha_factor,
+                            sec_return=factor_data['RETURN'],
+                            tiaocang_date=factor.get_tiaocang_date(),
+                            tiaocang_date_window_size=tiaocang_date_window_size,
+                            save_sec_score=save_sec_score,
+                            factor_weight_type=factor_weight_type,
+                            alpha_factor_sign=alpha_factor_sign)
+
+    print analyzer.get_analysis(output_layer_factor_name)
+
+
 if __name__ == "__main__":
-    plot_layer_factor_distance()
+    factor_norm_dict_parameters = {'MV': [FactorNormType.Null, DCAMFactorType.layerFactor, FactorICSign.Null],
+                                   'BP_LF': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.layerFactor,
+                                             FactorICSign.Null],
+                                   'EquityGrowth_YOY': [FactorNormType.IndustryAndCapNeutral,
+                                                        DCAMFactorType.layerFactor,
+                                                        FactorICSign.Null],
+                                   'ROE': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.layerFactor,
+                                           FactorICSign.Null],
+                                   'STDQ': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.layerFactor,
+                                            FactorICSign.Null],
+                                   'EP2_TTM': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.alphaFactor,
+                                               FactorICSign.Positive],
+                                   'SP_TTM': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.alphaFactor,
+                                              FactorICSign.Positive],
+                                   'GP2Asset': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.alphaFactor,
+                                                FactorICSign.Negative],
+                                   'PEG': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.alphaFactor,
+                                           FactorICSign.Positive],
+                                   'ProfitGrowth_Qr_YOY': [FactorNormType.IndustryAndCapNeutral,
+                                                           DCAMFactorType.alphaFactor,
+                                                           FactorICSign.Positive],
+                                   'TO_adj': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.alphaFactor,
+                                              FactorICSign.Negative],
+                                   'PPReversal': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.alphaFactor,
+                                                  FactorICSign.Negative],
+                                   'RETURN': [FactorNormType.IndustryAndCapNeutral, DCAMFactorType.returnFactor,
+                                              FactorICSign.Null],
+                                   'INDUSTRY': [FactorNormType.Null, DCAMFactorType.industryFactor, FactorICSign.Null],
+                                   'IND_WGT': [FactorNormType.Null, DCAMFactorType.indexWeight, FactorICSign.Null]}
+
+    factor_loader_parameters = {'start_date': '2010-06-05',
+                                'end_date': '2016-11-30',
+                                'factor_norm_dict': factor_norm_dict_parameters,
+                                'na_handler': FactorNAHandler.Ignore}
+
+    dcam_analyzer_parameters = {'factor_weight_type': FactorWeightType.ICWeight,
+                                'tiaocang_date_window_size': 12}
+
+    get_analyzer_table(factor_loader_params=factor_loader_parameters,
+                       dcam_analyzer_params=dcam_analyzer_parameters,
+                       output_layer_factor_name='MV',
+                       update_factor=True)
