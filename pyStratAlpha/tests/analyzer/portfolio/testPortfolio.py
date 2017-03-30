@@ -34,12 +34,15 @@ class TestPortfolio(unittest.TestCase):
 
         self.filtered = pd.read_csv(filtered_path)
 
-        def get_filtered_result(col_sec_id, col_weight):
+        def get_filtered_result(col_sec_id, col_value, index_name, value_name):
             ret = self.filtered.set_index(col_sec_id)
-            ret = ret[col_weight]
-            ret.name = 'weight'
-            ret.index.name = 'secID'
-            return ret
+            ret = ret[col_value]
+            ret.index.name = index_name
+            if type(ret) == pd.Series:
+                ret.name = value_name
+            elif type(ret) == pd.DataFrame:
+                ret.columns = value_name
+            return ret.dropna()
 
         self.get_filtered_result = get_filtered_result
 
@@ -58,7 +61,7 @@ class TestPortfolio(unittest.TestCase):
 
     def testGetWeightOnDate(self):
         calculated = self.portfolio._get_weight_on_date(datetime(2012, 8, 31))
-        expected = self.get_filtered_result('secID2', 'weight2')
+        expected = self.get_filtered_result('secID_2', 'weight_2', 'secID', 'weight')
         assert_series_equal(calculated, expected)
 
     def testFilterSecOnTiaoCangDate(self):
@@ -69,28 +72,25 @@ class TestPortfolio(unittest.TestCase):
 
         calculated = self.portfolio._filter_sec_on_tiaocang_date(datetime(2012, 8, 31), sec_id)
 
-        expected = pd.Series(data=self.filtered['filtered'].dropna().values,
-                             index=pd.Index(self.filtered['sec_id'].dropna(), name='secID'), name='filters',
-                             dtype='int32')
+        expected = self.get_filtered_result('secID_1', 'filters_1', 'secID', 'filters')
+        expected = expected.astype('int32')
         assert_series_equal(calculated, expected)
 
     def testUpdateWeightAfterFilter(self):
-        filtered = pd.Series(data=self.filtered['filtered'].dropna().values,
-                             index=pd.Index(self.filtered['sec_id'].dropna(), name='secID'), name='filters')
+        filtered = self.get_filtered_result('secID_1', 'filters_1', 'secID', 'filters')
         weight = get_multi_index_data(self.portfolio._sec_selected, 'tiaoCangDate', datetime(2012, 8, 31), 'secID',
                                       filtered.index.values)
         weight = weight.reset_index().set_index('secID')
         weight = weight[['weight', 'INDUSTRY']]
         calculated = self.portfolio._update_weight_after_filter(weight, filtered)
 
-        expected = self.filtered[['weight', 'INDUSTRY', 'filters', 'secID4']].set_index('secID4').dropna()
-        expected['weight'] = expected['weight']
-        expected.index.name = 'secID'
+        expected = self.get_filtered_result('secID_4', ['weight_4', 'INDUSTRY', 'filters_4'], 'secID',
+                                            ['weight', 'INDUSTRY', 'filters'])
         assert_frame_equal(calculated, expected)
 
     def testGetQuantity(self):
         init_ptf_value = 10000000
-        filtered = self.filtered[['filtered', 'sec_id']].dropna().set_index('sec_id')
+        filtered = self.filtered[['filters_1', 'secID_1']].dropna().set_index('secID_1')
         weight = get_multi_index_data(self.portfolio._sec_selected, 'tiaoCangDate', datetime(2012, 8, 31), 'secID',
                                       filtered.index.values)
         weight = weight.reset_index().set_index('secID')
@@ -99,7 +99,6 @@ class TestPortfolio(unittest.TestCase):
         price.name = 'price'
         calculated = self.portfolio._get_quantity(init_ptf_value, weight, price)
 
-        expected = pd.Series(data=self.filtered['quantity'].dropna().values,
-                             index=pd.Index(self.filtered['secID3'].dropna().values, name='secID'), dtype='int64',
-                             name='quantity')
+        expected = self.get_filtered_result('secID_3', 'quantity', 'secID', 'quantity')
+        expected = expected.astype('int64')
         assert_series_equal(calculated, expected)
