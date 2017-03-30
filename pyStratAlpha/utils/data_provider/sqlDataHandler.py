@@ -3,6 +3,7 @@
 from sqlalchemy import create_engine
 import pandas as pd
 from PyFin.Utilities import pyFinAssert
+from PyFin.Utilities import pyFinWarning
 from pyStratAlpha.enums import FreqType
 from pyStratAlpha.enums import DfReturnType
 
@@ -37,7 +38,7 @@ class MYSQLDataHandler(object):
 
         return conn
 
-    def load_factor_data(self, start_date, end_date, sec_ids, field='close', freq=FreqType.EOD,
+    def load_factor_data(self, start_date, end_date, sec_ids, field=['close'], freq=FreqType.EOD,
                          return_type=DfReturnType.DateIndexAndSecIDCol, table_name='sec_close'):
         """
         :param start_date: str, start date of the query period
@@ -50,11 +51,15 @@ class MYSQLDataHandler(object):
         :return: pd.DataFrame, index = date, col = sec ID
         """
         pyFinAssert(freq == FreqType.EOD, ValueError, "for the moment the function only accepts freq type = EOD")
+        str_field = ','.join([element for element in field])
         sql = 'select tradeDate, secID, {field} from {table} where tradeDate >= \'{start_date}\' and ' \
-              'tradeDate <= \'{end_date}\' '.format(field=field,
+              'tradeDate <= \'{end_date}\' '.format(field=str_field,
                                                     table=table_name,
                                                     start_date=start_date,
                                                     end_date=end_date)
+
+        if not isinstance(sec_ids, basestring):
+            sec_ids = [str(sec_id) for sec_id in sec_ids]
         if len(sec_ids) > 1:
             sql += 'and secID in {tp_sec_ids}'.format(tp_sec_ids=tuple(sec_ids))
         else:
@@ -71,7 +76,9 @@ def format_raw_data(raw_data, freq, field, return_type):
         if freq == FreqType.EOD:
             raw_data['tradeDate'] = pd.to_datetime(raw_data['tradeDate'])
         if return_type == DfReturnType.DateIndexAndSecIDCol:
-            ret = raw_data.pivot(index='tradeDate', columns='secID', values=field)
+            pyFinWarning(len(field) == 1, Warning,
+                         'Only the columns with name=field[0] will be used as values in pivot table')
+            ret = raw_data.pivot(index='tradeDate', columns='secID', values=field[0])
         else:
             ret = raw_data['tradeDate', 'secID', field]
             ret = ret.set_index('tradeDate')
@@ -81,4 +88,4 @@ def format_raw_data(raw_data, freq, field, return_type):
 
 if __name__ == "__main__":
     mysql = MYSQLDataHandler()
-    print mysql.load_factor_data('2011-01-01', '2011-02-01', ['000001.SZ'])
+    print mysql.load_factor_data('2015-01-01', '2016-06-01', ['000001.SZ'])

@@ -3,6 +3,8 @@
 
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+from PyFin.Utilities import pyFinAssert
 from PyFin.DateUtilities import Calendar
 from PyFin.api.DateUtilities import bizDatesList
 from alphalens.performance import mean_return_by_quantile
@@ -42,23 +44,21 @@ class FactorAnalyzer(object):
         self._calendar = Calendar(calendar)
         self._start_date = start_date
         self._end_date = end_date
-        self._factor = factor_raw
         self._industry = industry
         self._data_source = data_source
         self._periods = periods
 
+        self._factor = sec_score_convert2daily(sec_score=factor_raw, start_date=start_date, end_date=end_date)
         self._factor.index = self._factor.index.rename(_alphaLensFactorIndexName)
         self._factor.name = _alphaLensFactorColName
-        self._factor = self._factor[
-            self._factor.index.get_level_values(_alphaLensFactorIndexName[0]) >= self._start_date]
-        self._factor = self._factor[
-            self._factor.index.get_level_values(_alphaLensFactorIndexName[0]) <= self._end_date]
 
         self._trade_date = sorted(set(self._factor.index.get_level_values(_alphaLensFactorIndexName[0])))
-        self._sec_ID = sorted(set(self._factor.index.get_level_values(_alphaLensFactorIndexName[1]).tolist()))
+        self._sec_ID = sorted(set(self._factor.index.get_level_values(_alphaLensFactorIndexName[1])))
 
     def _get_clean_factor_and_fwd_return(self):
-        price = get_sec_price(self._trade_date[0], self._trade_date[-1], self._sec_ID, data_source=self._data_source)
+        price = get_sec_price(str(self._trade_date[0])[:10], str(self._trade_date[-1])[:10], self._sec_ID,
+                              data_source=self._data_source)
+
         factor_data = get_clean_factor_and_forward_returns(factor=self._factor,
                                                            prices=price,
                                                            groupby_labels=IndexComp.get_industry_name_dict(),
@@ -91,22 +91,30 @@ class FactorAnalyzer(object):
         for p in self._periods:
             self.quantile_tear_sheet(factor_data, p)
         self.top_bottom_tear_sheet(factor_data)
-
+        plt.show()
         return
 
 
-def sec_score_convert2daily(sec_score_path, calendar='China.SSE'):
-    sec_score = pd.read_csv(sec_score_path, encoding='gbk')
-    #sec_score['tiaoCangDate'] = sec_score['tiaoCangDate'].apply(lambda x: x.strftime('%Y-%m-%d'))
-    sec_score['tiaoCangDate'] = pd.to_datetime(sec_score['tiaoCangDate'])
+def sec_score_convert2daily(sec_score, start_date, end_date, calendar='China.SSE'):
+    """
+    :param sec_score: dataframe, col = [tiaoCangDate, secID, score/factor]
+    :param start_date: str, start date of sec_score to be used
+    :param end_date: str, end date of sec_score to be used
+    :param calendar: str, calendar defined in PyFin
+    :return:
+    """
+    sec_score = sec_score.loc[sec_score['tiaoCangDate'] >= start_date, :]
+    sec_score = sec_score.loc[sec_score['tiaoCangDate'] <= end_date, :]
+    sec_score.dropna(inplace=True)
     tiaocang_date_list = sorted(set(sec_score['tiaoCangDate']))
+    pyFinAssert(len(tiaocang_date_list) > 1, ValueError, 'length of tiaocang_date must be larger than 1')
 
     ret = pd.DataFrame()
     for i in range(0, len(tiaocang_date_list) - 1):
         date = bizDatesList(calendar, tiaocang_date_list[i], tiaocang_date_list[i + 1])
         nb_date = len(date)
         tiancang_sec_score = sec_score.loc[sec_score['tiaoCangDate'] >= tiaocang_date_list[i], :]
-        tiancang_sec_score = tiancang_sec_score.loc[tiancang_sec_score['tiaoCangDate'] < tiaocang_date_list[i+1], :]
+        tiancang_sec_score = tiancang_sec_score.loc[tiancang_sec_score['tiaoCangDate'] < tiaocang_date_list[i + 1], :]
         duplicate_date = np.concatenate(map(lambda x: np.tile(x, len(tiancang_sec_score)), date))
         duplicate_sec_score = np.tile(tiancang_sec_score['score'].values, nb_date)
         duplicate_sec_id = np.tile(tiancang_sec_score['secID'].values, nb_date)
@@ -119,6 +127,7 @@ def sec_score_convert2daily(sec_score_path, calendar='China.SSE'):
 
 
 if __name__ == "__main__":
-    daily_sec_score = sec_score_convert2daily('sec_score.csv')
-    analyzer = FactorAnalyzer('2010-01-01', '2016-08-01', daily_sec_score, data_source=DataSource.MYSQL_LOCAL)
+    sec_score_raw = pd.read_csv(_sec_score_path, encoding='gbk')
+    analyzer = FactorAnalyzer(start_date='2016-06-01', end_date='2016-08-01', factor_raw=sec_score_raw,
+                              data_source=DataSource.WIND)
     analyzer.create_full_tear_sheet()
