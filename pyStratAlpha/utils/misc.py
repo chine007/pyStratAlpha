@@ -4,13 +4,20 @@ import datetime as dt
 
 import pandas as pd
 from PyFin.Utilities import pyFinAssert
+from empyrical import cum_returns
 from matplotlib import font_manager
-from pyStratAlpha.utils.data_provider import WindMarketDataHandler
-from pyStratAlpha.utils.data_provider import TSMarketDataHandler
-from pyStratAlpha.utils.data_provider import MYSQLDataHandler
+
 from pyStratAlpha.enums import DataSource
 from pyStratAlpha.enums import DfReturnType
 from pyStratAlpha.enums import FreqType
+from pyStratAlpha.utils.data_provider import MYSQLDataHandler
+from pyStratAlpha.utils.data_provider import TSMarketDataHandler
+from pyStratAlpha.utils.data_provider import WindMarketDataHandler
+
+try:
+    from WindPy import w
+except ImportError:
+    pass
 
 
 def top(df, column=None, n=5):
@@ -91,32 +98,60 @@ def get_sec_price(start_date, end_date, sec_ids, data_source, freq=FreqType.EOD,
     :param csv_path: str, path of csv file if data_source = csv
     :return: pd.DataFrame
     """
-    if data_source == DataSource.WIND:
-        price_data = WindMarketDataHandler.get_sec_price_on_date(start_date=start_date,
-                                                                 end_date=end_date,
-                                                                 sec_ids=sec_ids,
-                                                                 freq=freq,
-                                                                 field=field,
-                                                                 return_type=return_type)
-    elif data_source == DataSource.TUSHARE:
-        price_data = TSMarketDataHandler.get_sec_price_on_date(start_date=start_date,
-                                                               end_date=end_date,
-                                                               sec_ids=sec_ids,
-                                                               freq=freq,
-                                                               field=field,
-                                                               return_type=return_type)
+
+    def route(source):
+        if source == DataSource.WIND:
+            return WindMarketDataHandler.get_sec_price_on_date
+        elif source == DataSource.TUSHARE:
+            return TSMarketDataHandler.get_sec_price_on_date
+        elif source == DataSource.MYSQL_LOCAL:
+            return MYSQLDataHandler().load_factor_data
+
+    if data_source == DataSource.WIND or data_source == DataSource.TUSHARE or data_source == DataSource.MYSQL_LOCAL:
+        ret = route(data_source)(start_date=start_date,
+                                 end_date=end_date,
+                                 sec_ids=sec_ids,
+                                 freq=freq,
+                                 field=field,
+                                 return_type=return_type)
     elif data_source == DataSource.CSV:
-        price_data = pd.read_csv(csv_path, index_col=0)
-        price_data.index = pd.to_datetime(price_data.index)
-    elif data_source == DataSource.MYSQL_LOCAL:
-        data_loader = MYSQLDataHandler()
-        price_data = data_loader.load_factor_data(start_date=start_date,
-                                                  end_date=end_date,
-                                                  sec_ids=sec_ids,
-                                                  freq=freq,
-                                                  field=field,
-                                                  return_type=return_type)
+        ret = pd.read_csv(csv_path)
+        ret['tradeDate'] = pd.to_datetime(ret['tradeDate'])
+        ret = ret.set_index('tradeDate')
     else:
         raise NotImplementedError
 
-    return price_data
+    return ret
+
+
+def get_sec_return_on_date(start_date, end_date, sec_ids, data_source=DataSource.WIND, freq=FreqType.EOD,
+                           field=['close'], return_type=DfReturnType.DateIndexAndSecIDCol, is_cumul=False,
+                           csv_path=None):
+    """
+    :param start_date: str, start date of the query period
+    :param end_date: str, end date of the query period
+    :param sec_ids: list of str, sec IDs
+    :param data_source: enum, source of data
+    :param field: str, filed of data to be queried
+    :param return_type
+    :param freq: FreqType
+    :param is_cumul: return is cumul or not
+    :param csv_path: str, csv file path
+    :return: pd.DataFrame, index = date, col = sec ID
+    """
+
+    ret = get_sec_price(start_date=start_date,
+                        end_date=end_date,
+                        sec_ids=sec_ids,
+                        data_source=data_source,
+                        freq=freq,
+                        field=field,
+                        return_type=return_type,
+                        csv_path=csv_path)
+    ret = ret.pct_change()
+    if is_cumul:
+        ret = ret.fillna(0)
+        ret = cum_returns(ret, starting_value=1.0)
+    else:
+        ret = ret.dropna()
+    return ret

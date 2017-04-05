@@ -98,8 +98,7 @@ class TestNavAnalyzer(unittest.TestCase):
         assert_frame_equal(calculated, expected)
 
         calculated = print_perf_stat_by_year(self.strategy, ReturnType.NonCumul, risk_free=0.00)
-        expected = pd.DataFrame(columns=pd.Int64Index([], dtype='int64'),
-                                index=['annual_return', 'calmar_ratio', 'max_drawdown', 'sharpe_ratio'])
+        expected = pd.DataFrame(index=['annual_return', 'calmar_ratio', 'max_drawdown', 'sharpe_ratio'])
         assert_frame_equal(calculated, expected)
 
     def testPerfStat(self):
