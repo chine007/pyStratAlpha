@@ -3,16 +3,16 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from PyFin.DateUtilities import Calendar
 from PyFin.DateUtilities import Date
+from PyFin.DateUtilities import Period
 from PyFin.api.DateUtilities import bizDatesList
 from matplotlib.pyplot import *
-
 from pyStratAlpha.analyzer.factor import get_multi_index_data
 from pyStratAlpha.analyzer.performance import strat_evaluation
 from pyStratAlpha.enums import DataSource
 from pyStratAlpha.enums import FreqType
 from pyStratAlpha.enums import ReturnType
 from pyStratAlpha.utils import get_sec_price
-from pyStratAlpha.utils.misc import get_sec_return_on_date
+from pyStratAlpha.utils import get_sec_return
 
 plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
 plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号
@@ -85,8 +85,8 @@ class Portfolio(object):
 
     def _filter_sec_on_tiaocang_date(self, tiaocang_date, sec_id):
         sse_cal = Calendar('China.SSE')
-        tiaocang_date_prev = sse_cal.advanceDate(Date.strptime(str(tiaocang_date)[:10]), '-1b').toDateTime()
-        tiaocang_date_prev2 = sse_cal.advanceDate(Date.strptime(str(tiaocang_date)[:10]), '-2b').toDateTime()
+        tiaocang_date_prev = sse_cal.advanceDate(Date.strptime(str(tiaocang_date)[:10]), Period('-1b')).toDateTime()
+        tiaocang_date_prev2 = sse_cal.advanceDate(Date.strptime(str(tiaocang_date)[:10]), Period('-2b')).toDateTime()
         price_data = get_sec_price(start_date=tiaocang_date_prev2,
                                    end_date=tiaocang_date,
                                    sec_ids=sec_id,
@@ -177,11 +177,11 @@ class Portfolio(object):
 
     def evaluate_ptf_return(self):
         strat_return = self.calc_ptf_value_curve()
-        benchmark_return = get_sec_return_on_date(start_date=strat_return.index.tolist()[0],
-                                                  end_date=strat_return.index.tolist()[-1],
-                                                  sec_ids=[self._benchmark_sec_id],
-                                                  data_source=DataSource.WIND,
-                                                  is_cumul=True)
+        benchmark_return = get_sec_return(start_date=strat_return.index.tolist()[0],
+                                          end_date=strat_return.index.tolist()[-1],
+                                          sec_ids=[self._benchmark_sec_id],
+                                          data_source=self._data_source,
+                                          is_cumul=True)
         benchmark_return = benchmark_return[self._benchmark_sec_id]
         benchmark_return.index = pd.to_datetime(benchmark_return.index)
         strat_evaluation(return_dict={'stratReturn': [strat_return, ReturnType.Cumul],

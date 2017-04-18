@@ -4,6 +4,7 @@ from pprint import pprint
 import pandas as pd
 from PyFin.DateUtilities import Calendar
 from PyFin.DateUtilities import Date
+from PyFin.DateUtilities import Period
 from pyStratAlpha.analyzer.factor import DCAMAnalyzer
 from pyStratAlpha.analyzer.factor import FactorLoader
 from pyStratAlpha.analyzer.factor import Selector
@@ -129,7 +130,7 @@ def dcam_strat_main(factor_loader_params,
     # construct strategy ptf
     # 价格数据需要使用到最后一个调仓日的后一个月末
     sse_cal = Calendar('China.SSE')
-    end_date_for_price_data = str(sse_cal.advanceDate(Date.strptime(end_date), '1m'))
+    end_date_for_price_data = str(sse_cal.advanceDate(Date.strptime(end_date), Period('1m')))
     strategy = Portfolio(sec_selected=sec_selected,
                          end_date=end_date_for_price_data,
                          initial_capital=initial_capital,
@@ -173,8 +174,8 @@ if __name__ == "__main__":
                                    'INDUSTRY': [FactorNormType.Null, DCAMFactorType.industryFactor, FactorICSign.Null],
                                    'IND_WGT': [FactorNormType.Null, DCAMFactorType.indexWeight, FactorICSign.Null]}
 
-    factor_loader_parameters = {'start_date': '2010-06-05',
-                                'end_date': '2016-11-30',
+    factor_loader_parameters = {'start_date': '2014-06-05',
+                                'end_date': '2017-04-05',
                                 'factor_norm_dict': factor_norm_dict_parameters,
                                 'na_handler': FactorNAHandler.Ignore}
 

@@ -9,6 +9,7 @@ from pyStratAlpha.utils.file_utils import unzip_csv_folder
 from pyStratAlpha.utils.misc import convert_to_non_cumul_return
 from pyStratAlpha.utils.misc import fig_style
 from pyStratAlpha.utils.misc import get_sec_price
+from pyStratAlpha.utils.misc import get_sec_return
 from pyStratAlpha.utils.misc import time_counter
 from pyStratAlpha.utils.misc import time_index_slicer
 from pyStratAlpha.utils.misc import top
@@ -23,6 +24,8 @@ __all__ = ['map_to_biz_day',
            'convert_to_non_cumul_return',
            'remove_suffix',
            'fig_style',
+           'get_sec_price',
+           'get_sec_return',
            'time_counter',
            'wind_convert_to_data_yes',
            'data_yes_convert_to_wind',

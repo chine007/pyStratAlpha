@@ -124,9 +124,9 @@ def get_sec_price(start_date, end_date, sec_ids, data_source, freq=FreqType.EOD,
     return ret
 
 
-def get_sec_return_on_date(start_date, end_date, sec_ids, data_source=DataSource.WIND, freq=FreqType.EOD,
-                           field=['close'], return_type=DfReturnType.DateIndexAndSecIDCol, is_cumul=False,
-                           csv_path=None):
+def get_sec_return(start_date, end_date, sec_ids, data_source=DataSource.WIND, freq=FreqType.EOD,
+                   field=['close'], return_type=DfReturnType.DateIndexAndSecIDCol, is_cumul=False,
+                   csv_path=None):
     """
     :param start_date: str, start date of the query period
     :param end_date: str, end date of the query period
