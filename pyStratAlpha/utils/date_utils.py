@@ -1,7 +1,7 @@
 # coding=utf-8
-import datetime
 
-import pandas as pd
+import datetime
+from PyFin.api import advanceDateByCalendar
 from PyFin.DateUtilities import Calendar
 from PyFin.DateUtilities import Date
 from PyFin.DateUtilities import Period
@@ -34,13 +34,14 @@ def map_to_biz_day(date_series, calendar='China.SSE', convention=BizDayConventio
     return ret
 
 
-def get_pos_adj_date(start_date, end_date, formats="%Y-%m-%d", calendar='China.SSE', freq='m'):
+def get_pos_adj_date(start_date, end_date, formats="%Y-%m-%d", calendar='China.SSE', freq='m', return_biz_day=False):
     """
     :param start_date: str/datetime.datetime, start date of strategy
     :param end_date: str/datetime.datetime, end date of strat egy
     :param formats: optional, formats of the string date
     :param calendar: str, optional, name of the calendar to use in dates math
     :param freq: str, optional, the frequency of data
+    :param return_biz_day: bool, optional, if the return dates are biz days
     :return: list of datetime.datetime, pos adjust dates
     """
     if isinstance(start_date, str) and isinstance(end_date, str):
@@ -60,17 +61,21 @@ def get_pos_adj_date(start_date, end_date, formats="%Y-%m-%d", calendar='China.S
     # so i first compute dates list in each period, then compute the last date of each period
     # last day of that period(month) is the pos adjustment date
     if _freqDict[freq] == TimeUnits.Weeks:
-        pos_adjust_date = [Date.toDateTime(Date.nextWeekday(date, Weekdays.Friday)) for date in pos_adjust_date[:-1]]
+        pos_adjust_date = [Date.nextWeekday(date, Weekdays.Friday) for date in pos_adjust_date[:-1]]
     elif _freqDict[freq] == TimeUnits.Months:
-        pos_adjust_date = [Date.toDateTime(cal.endOfMonth(date)) for date in pos_adjust_date[:-1]]
+        pos_adjust_date = [cal.endOfMonth(date) for date in pos_adjust_date[:-1]]
     elif _freqDict[freq] == TimeUnits.Years:
-        pos_adjust_date = [Date.toDateTime(Date(date.year(), 12, 31)) for date in pos_adjust_date[:-1]]
+        pos_adjust_date = [Date(date.year(), 12, 31) for date in pos_adjust_date[:-1]]
 
+    if return_biz_day:
+        pos_adjust_date = [cal.adjustDate(date, BizDayConventions.Preceding) for date in pos_adjust_date]
+    pos_adjust_date = [Date.toDateTime(date) for date in pos_adjust_date]
     pos_adjust_date = [date for date in pos_adjust_date if date <= d_end_date.toDateTime()]
+
     return pos_adjust_date
 
 
 if __name__ == "__main__":
-    print get_pos_adj_date('2013-5-20', '2016-12-20', freq='y')
-    print get_pos_adj_date(datetime.datetime(2013, 5, 20), datetime.datetime(2016, 12, 20), freq='y')
-    print map_to_biz_day(pd.Series([datetime.datetime(2015, 01, 30, 0, 0), datetime.datetime(2015, 02, 28, 0, 0)]))
+    print get_pos_adj_date('2017-01-01', '2017-03-01', freq='w', return_biz_day=True)
+    # print get_pos_adj_date(datetime.datetime(2013, 5, 20), datetime.datetime(2016, 12, 20), freq='y')
+    # print map_to_biz_day(pd.Series([datetime.datetime(2015, 01, 30, 0, 0), datetime.datetime(2015, 02, 28, 0, 0)]))
