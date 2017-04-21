@@ -4,6 +4,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.stats as st
 from PyFin.Utilities import pyFinAssert
 from PyFin.DateUtilities import Calendar
 from PyFin.api.DateUtilities import bizDatesList
@@ -15,7 +16,9 @@ from alphalens.plotting import plot_cumulative_returns_by_quantile
 from alphalens.tears import GridFigure
 from alphalens.plotting import plot_quantile_returns_bar
 from pyStratAlpha.analyzer.indexComp import IndexComp
+from pyStratAlpha.analyzer.factor.loadData import FactorLoader
 from pyStratAlpha.enums import DataSource
+from pyStratAlpha.enums import FactorNormType
 from pyStratAlpha.utils import get_sec_price
 
 _alphaLensFactorIndexName = ['date', 'asset']
@@ -104,8 +107,21 @@ class FactorAnalyzer(object):
         plt.show()
         return
 
+    def calc_rank_ic(self):
+        tiaocang_date = self._trade_date
+        ret = pd.Series()
+        for j in range(0, len(tiaocang_date) - 1):
+            date = tiaocang_date[j]
+            next_date = tiaocang_date[j + 1]
+            next_return = get_sec_price(date, next_date, self._factor[date].index,
+                                        data_source=self._data_source)
+            next_return = (next_return._values[-1] - next_return._values[0]) / next_return._values[0]
+            tmp, _ = st.spearmanr(self._factor[date].values, next_return)
+            ret[date] = tmp
+        return ret
 
-def convert_factor(factor, start_date, end_date, convert_2daily, col_name=['tiaoCangDate', 'secID', 'score'],
+
+def convert_factor(factor, start_date, end_date, convert2daily,
                    calendar='China.SSE'):
     """
     :param factor: dataframe, col = [tiaoCangDate, secID, score/factor]
@@ -114,13 +130,13 @@ def convert_factor(factor, start_date, end_date, convert_2daily, col_name=['tiao
     :param calendar: str, calendar defined in PyFin
     :return: ret: dataframe, col = [tiaoCangDate, secID, score/factor] frequency of tiaoCangDate is Day
     """
-    factor = factor.loc[factor['tiaoCangDate'] >= start_date, :]
-    factor = factor.loc[factor['tiaoCangDate'] <= end_date, :]
+
+    factor = factor.loc[factor.index.get_level_values('tiaoCangDate') >= start_date, :]
+    factor = factor.loc[factor.index.get_level_values('tiaoCangDate') <= end_date, :]
     factor.dropna(inplace=True)
-    tiaocang_date_list = sorted(set(factor['tiaoCangDate']))
+    tiaocang_date_list = sorted(set(factor.index.get_level_values('tiaoCangDate')))
     pyFinAssert(len(tiaocang_date_list) > 1, ValueError, 'length of tiaocang_date must be larger than 1')
-    # TODO clean code
-    if not convert_2daily:
+    if not convert2daily:
         return factor
 
     ret = pd.DataFrame()
@@ -128,11 +144,12 @@ def convert_factor(factor, start_date, end_date, convert_2daily, col_name=['tiao
         date = bizDatesList(calendar, tiaocang_date_list[i], tiaocang_date_list[i + 1])
         date = date if i == len(tiaocang_date_list) - 2 else date[:-1]
         nb_date = len(date)
-        tiancang_sec_score = factor.loc[factor['tiaoCangDate'] >= tiaocang_date_list[i], :]
-        tiancang_sec_score = tiancang_sec_score.loc[tiancang_sec_score['tiaoCangDate'] < tiaocang_date_list[i + 1], :]
-        duplicate_date = np.concatenate(map(lambda x: np.tile(x, len(tiancang_sec_score)), date))
-        duplicate_sec_score = np.tile(tiancang_sec_score['factor'].values, nb_date)
-        duplicate_sec_id = np.tile(tiancang_sec_score['secID'].values, nb_date)
+        tiancang_factor = factor.loc[factor.index.get_level_values('tiaoCangDate') >= tiaocang_date_list[i], :]
+        tiancang_factor = tiancang_factor.loc[
+                          tiancang_factor.index.get_level_values('tiaoCangDate') < tiaocang_date_list[i + 1], :]
+        duplicate_date = np.concatenate(map(lambda x: np.tile(x, len(tiancang_factor)), date))
+        duplicate_sec_score = np.tile(tiancang_factor.values, nb_date)
+        duplicate_sec_id = np.tile(tiancang_factor.index.get_level_values('secID'), nb_date)
         ret = pd.concat([ret, pd.DataFrame(
             {'tiaoCangDate': duplicate_date, 'secID': duplicate_sec_id, 'factor': duplicate_sec_score})])
 
@@ -142,7 +159,12 @@ def convert_factor(factor, start_date, end_date, convert_2daily, col_name=['tiao
 
 
 if __name__ == "__main__":
-    sec_score_raw = pd.read_csv(_sec_score_path, encoding='gbk')
-    analyzer = FactorAnalyzer(start_date='2011-01-01', end_date='2013-01-01', factor_raw=sec_score_raw,
-                              data_source=DataSource.MYSQL_LOCAL)
-    analyzer.create_full_tear_sheet()
+    factor = FactorLoader('2014-01-05',
+                          '2016-5-30',
+                          {'MV': [FactorNormType.Null],
+                           'INDUSTRY': [FactorNormType.Null],
+                           'ROE': [FactorNormType.IndustryAndCapNeutral],
+                           'RETURN': [FactorNormType.IndustryAndCapNeutral]}).get_factor_data()['MV']
+    analyzer = FactorAnalyzer(start_date='2014-01-05', end_date='2016-05-01', factor_raw=factor,
+                              data_source=DataSource.MYSQL_LOCAL, convert2daily=True)
+    print analyzer.create_full_tear_sheet()
