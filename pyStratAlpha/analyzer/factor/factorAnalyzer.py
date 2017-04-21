@@ -31,7 +31,8 @@ class FactorAnalyzer(object):
                  industry=None,
                  data_source=DataSource.WIND,
                  calendar='China.SSE',
-                 periods=[1, 5, 10]):
+                 periods=[1, 5, 10],
+                 **kwargs):
         """
         :param factor_raw: pd.Series, multi index=[tradeDate, secID]  columns = [factor]
         :param industry: pd.Series/dict, Either A MultiIndex Series indexed by date and asset, containing the period
@@ -48,11 +49,11 @@ class FactorAnalyzer(object):
         self._industry = industry
         self._data_source = data_source
         self._periods = periods
-
-        self._factor = sec_score_convert2daily(sec_score=factor_raw, start_date=start_date, end_date=end_date)
+        self._converto2daily = kwargs.get('convert2daily', True)
+        self._factor = convert_factor(factor=factor_raw, start_date=start_date,
+                                      end_date=end_date, convert2daily=self._converto2daily)
         self._factor.index = self._factor.index.rename(_alphaLensFactorIndexName)
         self._factor.name = _alphaLensFactorColName
-
 
         self._trade_date = sorted(set(self._factor.index.get_level_values(_alphaLensFactorIndexName[0])))
         self._sec_ID = sorted(set(self._factor.index.get_level_values(_alphaLensFactorIndexName[1])))
@@ -89,11 +90,9 @@ class FactorAnalyzer(object):
         plot_mean_quantile_returns_spread_time_series(quant_return_spread, std_err_spread)
 
     @classmethod
-    def mean_return_tear_sheet(cls,factor):
+    def mean_return_tear_sheet(cls, factor):
         mean_return_by_q, std_err_by_q = mean_return_by_quantile(factor, by_group=False)
         plot_quantile_returns_bar(mean_return_by_q)
-
-
 
     def create_full_tear_sheet(self):
         factor_data = self._get_clean_factor_and_fwd_return()
@@ -106,35 +105,39 @@ class FactorAnalyzer(object):
         return
 
 
-def sec_score_convert2daily(sec_score, start_date, end_date, calendar='China.SSE'):
+def convert_factor(factor, start_date, end_date, convert_2daily, col_name=['tiaoCangDate', 'secID', 'score'],
+                   calendar='China.SSE'):
     """
-    :param sec_score: dataframe, col = [tiaoCangDate, secID, score/factor]
+    :param factor: dataframe, col = [tiaoCangDate, secID, score/factor]
     :param start_date: str, start date of sec_score to be used
     :param end_date: str, end date of sec_score to be used
     :param calendar: str, calendar defined in PyFin
     :return: ret: dataframe, col = [tiaoCangDate, secID, score/factor] frequency of tiaoCangDate is Day
     """
-    sec_score = sec_score.loc[sec_score['tiaoCangDate'] >= start_date, :]
-    sec_score = sec_score.loc[sec_score['tiaoCangDate'] <= end_date, :]
-    sec_score.dropna(inplace=True)
-    tiaocang_date_list = sorted(set(sec_score['tiaoCangDate']))
+    factor = factor.loc[factor['tiaoCangDate'] >= start_date, :]
+    factor = factor.loc[factor['tiaoCangDate'] <= end_date, :]
+    factor.dropna(inplace=True)
+    tiaocang_date_list = sorted(set(factor['tiaoCangDate']))
     pyFinAssert(len(tiaocang_date_list) > 1, ValueError, 'length of tiaocang_date must be larger than 1')
+    # TODO clean code
+    if not convert_2daily:
+        return factor
 
     ret = pd.DataFrame()
     for i in range(0, len(tiaocang_date_list) - 1):
         date = bizDatesList(calendar, tiaocang_date_list[i], tiaocang_date_list[i + 1])
-        date = date if i == len(tiaocang_date_list)-2 else date[:-1]
+        date = date if i == len(tiaocang_date_list) - 2 else date[:-1]
         nb_date = len(date)
-        tiancang_sec_score = sec_score.loc[sec_score['tiaoCangDate'] >= tiaocang_date_list[i], :]
+        tiancang_sec_score = factor.loc[factor['tiaoCangDate'] >= tiaocang_date_list[i], :]
         tiancang_sec_score = tiancang_sec_score.loc[tiancang_sec_score['tiaoCangDate'] < tiaocang_date_list[i + 1], :]
         duplicate_date = np.concatenate(map(lambda x: np.tile(x, len(tiancang_sec_score)), date))
-        duplicate_sec_score = np.tile(tiancang_sec_score['score'].values, nb_date)
+        duplicate_sec_score = np.tile(tiancang_sec_score['factor'].values, nb_date)
         duplicate_sec_id = np.tile(tiancang_sec_score['secID'].values, nb_date)
         ret = pd.concat([ret, pd.DataFrame(
-            {'tiaoCangDate': duplicate_date, 'secID': duplicate_sec_id, 'score': duplicate_sec_score})])
+            {'tiaoCangDate': duplicate_date, 'secID': duplicate_sec_id, 'factor': duplicate_sec_score})])
 
     ret = ret.set_index(['tiaoCangDate', 'secID'])
-    ret = ret['score']
+    ret = ret['factor']
     return ret
 
 
