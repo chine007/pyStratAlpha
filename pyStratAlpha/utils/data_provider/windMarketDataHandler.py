@@ -44,7 +44,7 @@ class WindMarketDataHandler(object):
         start_date = str(start_date) if not isinstance(start_date, basestring) else start_date
         end_date = str(end_date) if not isinstance(end_date, basestring) else end_date
 
-        raw_data = w.wsd(sec_ids, field, start_date, end_date, 'PriceAdj=F', 'Fill=Previous')
+        raw_data = w.wsd(sec_ids, field, start_date, end_date, 'PriceAdj=F', 'Fill=Previous','Period='+freq)
         ret = format_raw_data(raw_data, sec_ids, freq, field, return_type)
 
         return ret

@@ -3,6 +3,7 @@
 
 import pandas as pd
 import numpy as np
+import datetime as dt
 import matplotlib.pyplot as plt
 import scipy.stats as st
 from PyFin.Utilities import pyFinAssert
@@ -16,10 +17,15 @@ from alphalens.plotting import plot_cumulative_returns_by_quantile
 from alphalens.tears import GridFigure
 from alphalens.plotting import plot_quantile_returns_bar
 from pyStratAlpha.analyzer.indexComp import IndexComp
-from pyStratAlpha.analyzer.factor.loadData import FactorLoader
 from pyStratAlpha.enums import DataSource
-from pyStratAlpha.enums import FactorNormType
 from pyStratAlpha.utils import get_sec_price
+import os
+
+from pyStratAlpha.analyzer.factor import FactorLoader
+from pyStratAlpha.enums import DCAMFactorType
+from pyStratAlpha.enums import FactorICSign
+from pyStratAlpha.enums import FactorNAHandler
+from pyStratAlpha.enums import FactorNormType
 
 _alphaLensFactorIndexName = ['date', 'asset']
 _alphaLensFactorColName = 'factor'
@@ -59,7 +65,10 @@ class FactorAnalyzer(object):
         self._factor.name = _alphaLensFactorColName
 
         self._trade_date = sorted(set(self._factor.index.get_level_values(_alphaLensFactorIndexName[0])))
+        self._trade_date = pd.to_datetime(self._trade_date)
         self._sec_ID = sorted(set(self._factor.index.get_level_values(_alphaLensFactorIndexName[1])))
+
+        self._csv_path = kwargs.get('csv_path', None)
 
     def _get_clean_factor_and_fwd_return(self):
         price = get_sec_price(str(self._trade_date[0])[:10], str(self._trade_date[-1])[:10], self._sec_ID,
@@ -112,11 +121,12 @@ class FactorAnalyzer(object):
         ret = pd.Series()
         for j in range(0, len(tiaocang_date) - 1):
             date = tiaocang_date[j]
-            next_date = tiaocang_date[j + 1]
-            next_return = get_sec_price(date, next_date, self._factor[date].index,
-                                        data_source=self._data_source)
-            next_return = (next_return._values[-1] - next_return._values[0]) / next_return._values[0]
-            tmp, _ = st.spearmanr(self._factor[date].values, next_return)
+            next_date = tiaocang_date[j+1]
+            next_price = get_sec_price(date, next_date, self._factor[date].index.tolist(),
+                                        data_source=self._data_source, csv_path=self._csv_path)
+            next_return = (next_price.loc[next_date] - next_price.loc[date]) / next_price.loc[date]
+            # TODO concat
+            tmp, _ = st.spearmanr(self._factor[date], next_return)
             ret[date] = tmp
         return ret
 
@@ -135,6 +145,7 @@ def convert_factor(factor, start_date, end_date, convert2daily,
     factor = factor.loc[factor.index.get_level_values('tiaoCangDate') <= end_date, :]
     factor.dropna(inplace=True)
     tiaocang_date_list = sorted(set(factor.index.get_level_values('tiaoCangDate')))
+    print tiaocang_date_list
     pyFinAssert(len(tiaocang_date_list) > 1, ValueError, 'length of tiaocang_date must be larger than 1')
     if not convert2daily:
         return factor
@@ -160,11 +171,13 @@ def convert_factor(factor, start_date, end_date, convert2daily,
 
 if __name__ == "__main__":
     factor = FactorLoader('2014-01-05',
-                          '2016-5-30',
+                          '2016-12-30',
                           {'MV': [FactorNormType.Null],
                            'INDUSTRY': [FactorNormType.Null],
                            'ROE': [FactorNormType.IndustryAndCapNeutral],
                            'RETURN': [FactorNormType.IndustryAndCapNeutral]}).get_factor_data()['MV']
-    analyzer = FactorAnalyzer(start_date='2014-01-05', end_date='2016-05-01', factor_raw=factor,
+
+    analyzer = FactorAnalyzer(start_date='2014-01-30', end_date='2016-07-30', factor_raw=factor,
                               data_source=DataSource.MYSQL_LOCAL, convert2daily=True)
     print analyzer.create_full_tear_sheet()
+
