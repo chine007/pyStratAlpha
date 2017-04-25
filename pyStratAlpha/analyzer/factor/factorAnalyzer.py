@@ -20,13 +20,12 @@ from pyStratAlpha.analyzer.indexComp import IndexComp
 from pyStratAlpha.enums import DataSource
 from pyStratAlpha.enums import FreqType
 from pyStratAlpha.utils import get_sec_price
-
-from pyStratAlpha.analyzer.factor import FactorLoader
 from pyStratAlpha.enums import FactorNormType
+from pyStratAlpha.utils import time_index_slicer
+from pyStratAlpha.analyzer.factor import FactorLoader
 
 _alphaLensFactorIndexName = ['date', 'asset']
 _alphaLensFactorColName = 'factor'
-_sec_score_path = 'sec_score.csv'
 
 
 class FactorAnalyzer(object):
@@ -56,27 +55,18 @@ class FactorAnalyzer(object):
         self._data_source = data_source
         self._periods = periods
         self._convert_freq = factor_raw['Freq']
-        self._factor = factor_raw['Factor']
-        self._factor_truncation()
+        self._factor = time_index_slicer(factor_raw['Factor'], start_date=start_date, end_date=end_date,
+                                         date_index_name='tiaoCangDate')
         self._factor_daily = None
-
         self._factor.index = self._factor.index.rename(_alphaLensFactorIndexName)
         self._factor.name = _alphaLensFactorColName
-
-        self._trade_date = sorted(set(self._factor.index.get_level_values(_alphaLensFactorIndexName[0])))
-        self._trade_date = pd.to_datetime(self._trade_date)
+        self._tiaocang_date = sorted(set(self._factor.index.get_level_values(_alphaLensFactorIndexName[0])))
+        self._tiaocang_date = pd.to_datetime(self._tiaocang_date)
         self._sec_ID = sorted(set(self._factor.index.get_level_values(_alphaLensFactorIndexName[1])))
-
         self._csv_path = kwargs.get('csv_path', None)
 
-    def _factor_truncation(self):
-        self._factor = self._factor.loc[self._factor.index.get_level_values('tiaoCangDate') >= self._start_date, :]
-        self._factor = self._factor.loc[self._factor.index.get_level_values('tiaoCangDate') <= self._end_date, :]
-        self._factor.dropna(inplace=True)
-        return
-
     def _factor_convert2daily(self):
-        tiaocang_date_list = self._trade_date
+        tiaocang_date_list = self._tiaocang_date
         ret = pd.DataFrame()
         for i in range(0, len(tiaocang_date_list) - 1):
             date = bizDatesList(self._calendar.name, tiaocang_date_list[i], tiaocang_date_list[i + 1])
@@ -96,7 +86,9 @@ class FactorAnalyzer(object):
         return ret
 
     def _get_clean_factor_and_fwd_return(self, factor):
-        price = get_sec_price(str(self._trade_date[0])[:10], str(self._trade_date[-1])[:10], self._sec_ID,
+        price = get_sec_price(start_date=str(self._tiaocang_date[0])[:10],
+                              end_date=str(self._tiaocang_date[-1])[:10],
+                              sec_ids=self._sec_ID,
                               data_source=self._data_source)
 
         factor_and_return = get_clean_factor_and_forward_returns(factor=factor,
@@ -105,10 +97,10 @@ class FactorAnalyzer(object):
                                                                  periods=self._periods)
         return factor_and_return
 
-    @classmethod
-    def quantile_tear_sheet(cls, factor, p):
+    @staticmethod
+    def quantile_tear_sheet(factor_and_return, p):
         gf = GridFigure(rows=1, cols=1)
-        mean_quantile_daily, std_quantile_daily = mean_return_by_quantile(factor,
+        mean_quantile_daily, std_quantile_daily = mean_return_by_quantile(factor_and_return,
                                                                           by_date=True,
                                                                           by_group=False,
                                                                           demeaned=True)
@@ -117,18 +109,18 @@ class FactorAnalyzer(object):
                                             period=p,
                                             ax=gf.next_row())
 
-    @classmethod
-    def top_bottom_tear_sheet(cls, factor, quantile=[1, 5]):
-        mean_return_by_q_daily, std_err = mean_return_by_quantile(factor, by_date=True)
+    @staticmethod
+    def top_bottom_tear_sheet(factor_and_return, quantile=[1, 5]):
+        mean_return_by_q_daily, std_err = mean_return_by_quantile(factor_and_return, by_date=True)
         quant_return_spread, std_err_spread = compute_mean_returns_spread(mean_return_by_q_daily,
                                                                           upper_quant=quantile[1],
                                                                           lower_quant=quantile[0],
                                                                           std_err=std_err)
         plot_mean_quantile_returns_spread_time_series(quant_return_spread, std_err_spread)
 
-    @classmethod
-    def mean_return_tear_sheet(cls, factor):
-        mean_return_by_q, std_err_by_q = mean_return_by_quantile(factor, by_group=False)
+    @staticmethod
+    def mean_return_tear_sheet(factor_and_return):
+        mean_return_by_q, std_err_by_q = mean_return_by_quantile(factor_and_return, by_group=False)
         plot_quantile_returns_bar(mean_return_by_q)
 
     def create_full_tear_sheet(self):
@@ -150,10 +142,8 @@ class FactorAnalyzer(object):
         plt.show()
         return
 
-
-
     def calc_rank_ic(self):
-        tiaocang_date = self._trade_date
+        tiaocang_date = self._tiaocang_date
         ret = pd.Series(name='rank_IC')
         for j in range(0, len(tiaocang_date) - 1):
             date = tiaocang_date[j]
@@ -169,12 +159,12 @@ class FactorAnalyzer(object):
         index = np.arange(n_groups)
         bar_width = 0.35
         opacity = 0.4
-        rects = plt.bar(index, ret, bar_width,alpha=opacity, color='b',label=  'IC')
+        rects = plt.bar(index, ret, bar_width, alpha=opacity, color='b', label='IC')
         plt.xlabel('Group')
         plt.ylabel('Scores')
         plt.title('Scores by group and gender')
         plt.xticks(index + bar_width, tiaocang_date[:-1])
-        plt.ylim(-1,1)
+        plt.ylim(-1, 1)
         plt.legend()
         plt.tight_layout()
         plt.show()
@@ -190,7 +180,8 @@ if __name__ == "__main__":
                            'RETURN': [FactorNormType.IndustryAndCapNeutral]})
     factor_data = factor.get_factor_data()
 
-    analyzer = FactorAnalyzer(start_date='2014-01-30', end_date='2015-07-30', factor_raw={'Factor': factor_data['MV'],
-                                                                                          'Freq': FreqType.EOM},
+    analyzer = FactorAnalyzer(start_date='2014-01-30',
+                              end_date='2015-07-30',
+                              factor_raw={'Factor': factor_data['MV'], 'Freq': FreqType.EOM},
                               data_source=DataSource.WIND)
     analyzer.calc_rank_ic()
