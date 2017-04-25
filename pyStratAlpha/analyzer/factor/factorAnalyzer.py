@@ -3,28 +3,25 @@
 
 import pandas as pd
 import numpy as np
-import datetime as dt
 import matplotlib.pyplot as plt
 import scipy.stats as st
-from PyFin.Utilities import pyFinAssert
 from PyFin.DateUtilities import Calendar
 from PyFin.api.DateUtilities import bizDatesList
 from alphalens.performance import mean_return_by_quantile
 from alphalens.performance import compute_mean_returns_spread
+from alphalens.performance import factor_information_coefficient
 from alphalens.utils import get_clean_factor_and_forward_returns
 from alphalens.plotting import plot_mean_quantile_returns_spread_time_series
 from alphalens.plotting import plot_cumulative_returns_by_quantile
+from alphalens.plotting import plot_ic_ts
 from alphalens.tears import GridFigure
 from alphalens.plotting import plot_quantile_returns_bar
 from pyStratAlpha.analyzer.indexComp import IndexComp
 from pyStratAlpha.enums import DataSource
+from pyStratAlpha.enums import FreqType
 from pyStratAlpha.utils import get_sec_price
-import os
 
 from pyStratAlpha.analyzer.factor import FactorLoader
-from pyStratAlpha.enums import DCAMFactorType
-from pyStratAlpha.enums import FactorICSign
-from pyStratAlpha.enums import FactorNAHandler
 from pyStratAlpha.enums import FactorNormType
 
 _alphaLensFactorIndexName = ['date', 'asset']
@@ -58,9 +55,11 @@ class FactorAnalyzer(object):
         self._industry = industry
         self._data_source = data_source
         self._periods = periods
-        self._converto2daily = kwargs.get('convert2daily', True)
-        self._factor = convert_factor(factor=factor_raw, start_date=start_date,
-                                      end_date=end_date, convert2daily=self._converto2daily)
+        self._convert_freq = factor_raw['Freq']
+        self._factor = factor_raw['Factor']
+        self._factor_truncation()
+        self._factor_daily = None
+
         self._factor.index = self._factor.index.rename(_alphaLensFactorIndexName)
         self._factor.name = _alphaLensFactorColName
 
@@ -70,15 +69,41 @@ class FactorAnalyzer(object):
 
         self._csv_path = kwargs.get('csv_path', None)
 
-    def _get_clean_factor_and_fwd_return(self):
+    def _factor_truncation(self):
+        self._factor = self._factor.loc[self._factor.index.get_level_values('tiaoCangDate') >= self._start_date, :]
+        self._factor = self._factor.loc[self._factor.index.get_level_values('tiaoCangDate') <= self._end_date, :]
+        self._factor.dropna(inplace=True)
+        return
+
+    def _factor_convert2daily(self):
+        tiaocang_date_list = self._trade_date
+        ret = pd.DataFrame()
+        for i in range(0, len(tiaocang_date_list) - 1):
+            date = bizDatesList(self._calendar.name, tiaocang_date_list[i], tiaocang_date_list[i + 1])
+            date = date if i == len(tiaocang_date_list) - 2 else date[:-1]
+            nb_date = len(date)
+            tiancang_factor = self._factor.loc[self._factor.index.get_level_values('date') >= tiaocang_date_list[i], :]
+            tiancang_factor = tiancang_factor.loc[
+                              tiancang_factor.index.get_level_values('date') < tiaocang_date_list[i + 1], :]
+            duplicate_date = np.concatenate(map(lambda x: np.tile(x, len(tiancang_factor)), date))
+            duplicate_sec_score = np.tile(tiancang_factor.values, nb_date)
+            duplicate_sec_id = np.tile(tiancang_factor.index.get_level_values('asset'), nb_date)
+            ret = pd.concat([ret, pd.DataFrame(
+                {'date': duplicate_date, 'secID': duplicate_sec_id, 'factor': duplicate_sec_score})])
+
+        ret = ret.set_index(['date', 'secID'])
+        ret = ret['factor']
+        return ret
+
+    def _get_clean_factor_and_fwd_return(self, factor):
         price = get_sec_price(str(self._trade_date[0])[:10], str(self._trade_date[-1])[:10], self._sec_ID,
                               data_source=self._data_source)
 
-        factor_data = get_clean_factor_and_forward_returns(factor=self._factor,
-                                                           prices=price,
-                                                           groupby_labels=IndexComp.get_industry_name_dict(),
-                                                           periods=self._periods)
-        return factor_data
+        factor_and_return = get_clean_factor_and_forward_returns(factor=factor,
+                                                                 prices=price,
+                                                                 groupby_labels=IndexComp.get_industry_name_dict(),
+                                                                 periods=self._periods)
+        return factor_and_return
 
     @classmethod
     def quantile_tear_sheet(cls, factor, p):
@@ -107,66 +132,53 @@ class FactorAnalyzer(object):
         plot_quantile_returns_bar(mean_return_by_q)
 
     def create_full_tear_sheet(self):
-        factor_data = self._get_clean_factor_and_fwd_return()
+        self._factor_daily = self._factor_convert2daily() if self._convert_freq != FreqType.EOD else self._factor
+        factor_and_return = self._get_clean_factor_and_fwd_return(self._factor_daily)
 
         for p in self._periods:
-            self.quantile_tear_sheet(factor_data, p)
-        self.top_bottom_tear_sheet(factor_data)
-        self.mean_return_tear_sheet(factor_data)
+            self.quantile_tear_sheet(factor_and_return, p)
+        self.top_bottom_tear_sheet(factor_and_return)
+        self.mean_return_tear_sheet(factor_and_return)
         plt.show()
         return
 
+    def create_ic_tear_sheet(self):
+        self._factor_daily = self._factor_convert2daily() if self._convert_freq != FreqType.EOD else self._factor
+        factor_and_return = self._get_clean_factor_and_fwd_return(self._factor_daily)
+        ic = factor_information_coefficient(factor_and_return)
+        plot_ic_ts(ic)
+        plt.show()
+        return
+
+
+
     def calc_rank_ic(self):
         tiaocang_date = self._trade_date
-        ret = pd.Series()
+        ret = pd.Series(name='rank_IC')
         for j in range(0, len(tiaocang_date) - 1):
             date = tiaocang_date[j]
-            next_date = tiaocang_date[j+1]
+            next_date = tiaocang_date[j + 1]
             next_price = get_sec_price(date, next_date, self._factor[date].index.tolist(),
-                                        data_source=self._data_source, csv_path=self._csv_path)
+                                       data_source=self._data_source, csv_path=self._csv_path)
             next_return = (next_price.loc[next_date] - next_price.loc[date]) / next_price.loc[date]
-            # TODO concat
-            tmp, _ = st.spearmanr(self._factor[date], next_return)
+            table_concat = pd.concat([self._factor[date], next_return], axis=1)
+            tmp, _ = st.spearmanr(table_concat['factor'], table_concat[0])
             ret[date] = tmp
+        n_groups = len(ret)
+        fig, ax = plt.subplots()
+        index = np.arange(n_groups)
+        bar_width = 0.35
+        opacity = 0.4
+        rects = plt.bar(index, ret, bar_width,alpha=opacity, color='b',label=  'IC')
+        plt.xlabel('Group')
+        plt.ylabel('Scores')
+        plt.title('Scores by group and gender')
+        plt.xticks(index + bar_width, tiaocang_date[:-1])
+        plt.ylim(-1,1)
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
         return ret
-
-
-def convert_factor(factor, start_date, end_date, convert2daily,
-                   calendar='China.SSE'):
-    """
-    :param factor: dataframe, col = [tiaoCangDate, secID, score/factor]
-    :param start_date: str, start date of sec_score to be used
-    :param end_date: str, end date of sec_score to be used
-    :param calendar: str, calendar defined in PyFin
-    :return: ret: dataframe, col = [tiaoCangDate, secID, score/factor] frequency of tiaoCangDate is Day
-    """
-
-    factor = factor.loc[factor.index.get_level_values('tiaoCangDate') >= start_date, :]
-    factor = factor.loc[factor.index.get_level_values('tiaoCangDate') <= end_date, :]
-    factor.dropna(inplace=True)
-    tiaocang_date_list = sorted(set(factor.index.get_level_values('tiaoCangDate')))
-    print tiaocang_date_list
-    pyFinAssert(len(tiaocang_date_list) > 1, ValueError, 'length of tiaocang_date must be larger than 1')
-    if not convert2daily:
-        return factor
-
-    ret = pd.DataFrame()
-    for i in range(0, len(tiaocang_date_list) - 1):
-        date = bizDatesList(calendar, tiaocang_date_list[i], tiaocang_date_list[i + 1])
-        date = date if i == len(tiaocang_date_list) - 2 else date[:-1]
-        nb_date = len(date)
-        tiancang_factor = factor.loc[factor.index.get_level_values('tiaoCangDate') >= tiaocang_date_list[i], :]
-        tiancang_factor = tiancang_factor.loc[
-                          tiancang_factor.index.get_level_values('tiaoCangDate') < tiaocang_date_list[i + 1], :]
-        duplicate_date = np.concatenate(map(lambda x: np.tile(x, len(tiancang_factor)), date))
-        duplicate_sec_score = np.tile(tiancang_factor.values, nb_date)
-        duplicate_sec_id = np.tile(tiancang_factor.index.get_level_values('secID'), nb_date)
-        ret = pd.concat([ret, pd.DataFrame(
-            {'tiaoCangDate': duplicate_date, 'secID': duplicate_sec_id, 'factor': duplicate_sec_score})])
-
-    ret = ret.set_index(['tiaoCangDate', 'secID'])
-    ret = ret['factor']
-    return ret
 
 
 if __name__ == "__main__":
@@ -175,9 +187,10 @@ if __name__ == "__main__":
                           {'MV': [FactorNormType.Null],
                            'INDUSTRY': [FactorNormType.Null],
                            'ROE': [FactorNormType.IndustryAndCapNeutral],
-                           'RETURN': [FactorNormType.IndustryAndCapNeutral]}).get_factor_data()['MV']
+                           'RETURN': [FactorNormType.IndustryAndCapNeutral]})
+    factor_data = factor.get_factor_data()
 
-    analyzer = FactorAnalyzer(start_date='2014-01-30', end_date='2016-07-30', factor_raw=factor,
-                              data_source=DataSource.MYSQL_LOCAL, convert2daily=True)
-    print analyzer.create_full_tear_sheet()
-
+    analyzer = FactorAnalyzer(start_date='2014-01-30', end_date='2015-07-30', factor_raw={'Factor': factor_data['MV'],
+                                                                                          'Freq': FreqType.EOM},
+                              data_source=DataSource.WIND)
+    analyzer.calc_rank_ic()
