@@ -167,9 +167,10 @@ class FactorLoader(object):
 if __name__ == "__main__":
     factor = FactorLoader('2015-01-05',
                           '2015-12-30',
-                          {'MV': FactorNormType.Null,
-                           'INDUSTRY': FactorNormType.Null,
-                           'ROE': FactorNormType.IndustryAndCapNeutral,
-                           'RETURN': FactorNormType.IndustryAndCapNeutral})
+                          {'MV': [FactorNormType.Null],
+                           'INDUSTRY': [FactorNormType.Null],
+                           'ROE': [FactorNormType.IndustryAndCapNeutral],
+                           'RETURN': [FactorNormType.IndustryAndCapNeutral]})
     ret = factor.get_norm_factor_data()
-    print ret['RETURN']
+    print ret.axes
+

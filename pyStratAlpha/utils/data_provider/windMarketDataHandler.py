@@ -40,7 +40,6 @@ class WindMarketDataHandler(object):
         if not w.isconnected():
             w.start()
 
-        pyFinAssert(freq == FreqType.EOD, ValueError, "for the moment the function only accepts freq type = EOD")
         start_date = str(start_date) if not isinstance(start_date, basestring) else start_date
         end_date = str(end_date) if not isinstance(end_date, basestring) else end_date
 
@@ -85,9 +84,8 @@ def format_raw_data(raw_data, sec_ids, freq, fields, return_type):
             for secID in sec_ids:
                 output[secID] = raw_data.Data[sec_ids.index(secID)]
             ret = pd.DataFrame(output)
-            if freq == FreqType.EOD:
-                ret['tradeDate'] = ret['tradeDate'].apply(lambda x: x.strftime('%Y-%m-%d'))
-                ret['tradeDate'] = pd.to_datetime(ret['tradeDate'])
+            ret['tradeDate'] = ret['tradeDate'].apply(lambda x: x.strftime('%Y-%m-%d'))
+            ret['tradeDate'] = pd.to_datetime(ret['tradeDate'])
             ret = ret.set_index('tradeDate')
         else:
             raise NotImplementedError
