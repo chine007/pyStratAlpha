@@ -46,16 +46,19 @@ def convert_to_non_cumul_return(returns):
     return daily_returns
 
 
-def time_index_slicer(data, start_date, end_date):
+def time_index_slicer(data, start_date, end_date, date_index_name='tradeDate'):
     """
     :param data: pd.DataFrame, index = datetime.datetime
     :param start_date: str/datetime.datetime, start date of the horizon returned
     :param end_date: str/datetime.datetime, end date of the horizon returned
     :return: pd.DataFrame, time sliced data
     """
-
-    ret = data.loc[data.index >= start_date]
-    ret = ret.loc[ret.index <= end_date]
+    if isinstance(data.index, pd.MultiIndex):
+        ret = data.loc[data.index.get_level_values(date_index_name) >= start_date, :]
+        ret = ret.loc[ret.index.get_level_values(date_index_name) <= end_date, :]
+    else:
+        ret = data.loc[data.index >= start_date]
+        ret = ret.loc[ret.index <= end_date]
     return ret
 
 
