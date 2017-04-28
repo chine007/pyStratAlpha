@@ -311,7 +311,7 @@ class DCAMAnalyzer(object):
                 factor_low_rank = pd.concat([factor_low_rank, factor_low_rank_col], axis=1)
                 factor_high_rank = pd.concat([factor_high_rank, factor_high_rank_col], axis=1)
             # multi index DataFrame
-            sec_id_index = np.append(factor_low_rank.Findex, factor_high_rank.index)
+            sec_id_index = np.append(factor_low_rank.index, factor_high_rank.index)
             layer_factor_index = [layerFactor.name] * len(sec_id_index)
             high_low_index = ['low'] * len(factor_low_rank) + ['high'] * len(factor_high_rank)
             factor_rank_array = pd.concat([factor_low_rank, factor_high_rank], axis=0).values
